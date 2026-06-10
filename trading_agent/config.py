@@ -1,0 +1,32 @@
+"""
+配置管理
+
+使用方式：
+1. 复制 config.example.json 为 data/config.json
+2. 填入你的钱包私钥和 DeepSeek API key
+"""
+
+# DeepSeek
+DEEPSEEK_API_KEY = "sk-a74b64ec889b4d95adbaf04b8447b885"
+DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+DEEPSEEK_MODEL = "deepseek-chat"
+
+# Hyperliquid - 主网
+# 去 https://app.hyperliquid.xyz/ 创建钱包，导出私钥填入 data/config.json
+HL_RPC_URL = "https://api.hyperliquid.xyz"
+
+# ========== 安全限制（防止 AI 乱来）==========
+# 单笔最大仓位：钱包总资金的百分比
+MAX_POSITION_SIZE_PCT = 10  # 10%
+
+# 最大杠杆
+MAX_LEVERAGE = 3  # 最高 3 倍
+
+# 每日最大亏损：超过这个比例就停止自动交易
+DAILY_LOSS_LIMIT_PCT = -5  # -5%，日亏 5% 就停
+
+# 只允许交易的币种（空 = 不限）
+ALLOWED_COINS = []  # 例如 ["BTC", "ETH"]
+
+# 自动交易间隔（秒）
+AUTO_TRADE_INTERVAL = 300  # 5 分钟

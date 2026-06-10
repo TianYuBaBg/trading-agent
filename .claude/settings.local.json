@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python *)",
+      "Bash(pip install *)",
+      "Bash(PYTHONIOENCODING=utf-8 timeout 10 python *)",
+      "Bash(PYTHONIOENCODING=utf-8 python *)",
+      "WebFetch(domain:github.com)",
+      "Bash(gh api *)",
+      "mcp__puppeteer__browser_init",
+      "mcp__puppeteer__navigate",
+      "mcp__puppeteer__get_content",
+      "Bash(git clone *)",
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}

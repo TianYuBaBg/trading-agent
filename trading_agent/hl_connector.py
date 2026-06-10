@@ -21,12 +21,33 @@ _CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", 
 
 
 def _load_wallet():
-    """从 data/config.json 读取钱包私钥"""
+    """
+    从 data/config.json 读取钱包配置。
+    支持两种模式：
+      1. API 钱包模式（推荐）：
+         { "main_address": "0x...", "api_key": "0x..." }
+         main_address 从 Hyperliquid 网站上看
+         api_key 从网站 /API 生成
+      2. 直连模式：
+         { "wallet_private_key": "0x..." }
+    """
     if not os.path.exists(_CONFIG_PATH):
-        return None
+        return None, None, None
     with open(_CONFIG_PATH) as f:
         cfg = json.load(f)
-    return cfg.get("wallet_private_key", "")
+
+    # 优先使用 API 钱包模式
+    main_addr = cfg.get("main_address", "")
+    api_key = cfg.get("api_key", "")
+    if main_addr and api_key:
+        return main_addr, api_key, "api"
+
+    # 降级到直接私钥模式
+    pk = cfg.get("wallet_private_key", "")
+    if pk:
+        return pk, pk, "direct"
+
+    return None, None, None
 
 
 # ========== 初始化连接 ==========
@@ -46,12 +67,20 @@ def _ensure_info():
 def _ensure_exchange():
     global _exchange, _wallet_address
     if _exchange is None:
-        pk = _load_wallet()
-        if not pk:
-            raise Exception("请先在 data/config.json 中配置 wallet_private_key")
-        account = Account.from_key(pk)
-        _wallet_address = account.address
-        _exchange = Exchange(account, constants.MAINNET_API_URL)
+        sign_key, addr_or_key, mode = _load_wallet()
+        if not sign_key:
+            raise Exception("请先在 data/config.json 中配置钱包")
+
+        if mode == "api":
+            # API 钱包模式：用主钱包地址查，用 API 私钥签名
+            _wallet_address = addr_or_key  # main_address
+            account = Account.from_key(sign_key)  # api_key
+            _exchange = Exchange(account, constants.MAINNET_API_URL, account_address=_wallet_address)
+        else:
+            # 直连模式：私钥既当身份又当签名
+            account = Account.from_key(sign_key)
+            _wallet_address = account.address
+            _exchange = Exchange(account, constants.MAINNET_API_URL)
     return _exchange
 
 

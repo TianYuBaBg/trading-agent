@@ -71,35 +71,68 @@ def create_wallet():
 
 
 def _ensure_config():
-    """确保配置文件存在，不存在则提示创建钱包"""
+    """确保配置文件存在，支持两种钱包模式"""
     if not os.path.exists(_CONFIG_PATH):
-        print("检测到首次使用，需要创建一个钱包。")
-        print("输入 Y 创建新钱包，输入 N 手动配置已有钱包")
-        choice = input("\n是否创建钱包？(Y/n): ").strip().lower()
-        if choice in ["", "y", "yes"]:
+        print("首次使用，请选择钱包方式：")
+        print("  1) 创建新钱包 — 生成新地址，往里面打钱")
+        print("  2) 配置 API 钱包 — 用网站邮箱登录生成的 API 私钥（推荐）")
+        choice = input("\n请选择 (1/2): ").strip()
+
+        if choice == "2":
+            return _setup_api_wallet()
+        else:
             create_wallet()
             return True
-        else:
-            example = {
-                "wallet_private_key": "",
-                "wallet_address": "",
-                "note": "填写你的 Hyperliquid 钱包私钥",
-            }
-            with open(_CONFIG_PATH, "w") as f:
-                json.dump(example, f, ensure_ascii=False, indent=2)
-            print("请在 data/config.json 中配置 wallet_private_key")
-            return False
 
+    # 已有配置文件，检查是否有效
     with open(_CONFIG_PATH) as f:
         cfg = json.load(f)
-    if not cfg.get("wallet_private_key"):
-        print("config.json 中缺少 wallet_private_key")
-        print("输入 Y 重新创建钱包，输入 N 手动配置")
-        choice = input("\n重新创建钱包？(Y/n): ").strip().lower()
-        if choice in ["", "y", "yes"]:
-            create_wallet()
-            return True
+
+    # API 钱包模式：有 main_address 和 api_key 就行
+    if cfg.get("main_address") and cfg.get("api_key"):
+        return True
+
+    # 直连模式：有 wallet_private_key 就行
+    if cfg.get("wallet_private_key"):
+        return True
+
+    # 配置无效
+    print("config.json 配置不完整。")
+    print("  1) 重新创建钱包")
+    print("  2) 配置 API 钱包（推荐）")
+    choice = input("\n请选择 (1/2): ").strip()
+    if choice == "2":
+        return _setup_api_wallet()
+    else:
+        create_wallet()
+        return True
+
+
+def _setup_api_wallet():
+    """引导用户配置 API 钱包"""
+    print("\n如何获取 API 钱包：")
+    print("  1. 打开 https://app.hyperliquid.xyz")
+    print("  2. 用邮箱登录")
+    print("  3. 点 API → 创建 API 钱包")
+    print("  4. 复制主钱包地址 和 API 私钥")
+    print()
+
+    addr = input("主钱包地址 (0x...): ").strip()
+    key = input("API 私钥 (0x...): ").strip()
+
+    if not addr or not key:
+        print("地址和私钥不能为空")
         return False
+
+    config_data = {
+        "main_address": addr,
+        "api_key": key,
+        "note": "API 钱包模式。main_address 是主钱包地址，api_key 是网站生成的 API 私钥",
+    }
+    with open(_CONFIG_PATH, "w") as f:
+        json.dump(config_data, f, ensure_ascii=False, indent=2)
+
+    print(f"\n✅ API 钱包配置完成！main_address: {addr[:20]}...")
     return True
 
 
@@ -111,6 +144,7 @@ def manual_mode():
     print("  交易智能体 — 手动模式")
     print("  输入你的想法，AI 会先看市场再决策")
     print("  输入 '创建钱包' 生成新钱包")
+    print("  输入 'API 钱包' 配置 API 钱包（网站邮箱登录生成）")
     print("  输入 '复盘' 运行复盘分析")
     print("  输入 '状态' 看当前账户状况")
     print("  输入 '教训' 看历史教训")
@@ -132,6 +166,10 @@ def manual_mode():
 
             if cmd in ["创建钱包", "新建钱包"]:
                 create_wallet()
+                continue
+
+            if cmd in ["API 钱包", "api"]:
+                _setup_api_wallet()
                 continue
 
             if cmd == "复盘":

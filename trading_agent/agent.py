@@ -76,10 +76,23 @@ def _build_system_prompt():
 4. 如果发现交易机会，果断用 open_trade 开仓；如果持仓方向错了，close_trade 平仓"""
 
 
+# ========== 防重复执行 ==========
+# 记录当前周期已执行过的操作，防止 AI 同一轮重复开仓
+_executed_ops: set = set()
+
+
+def _reset_executed_ops():
+    """每轮交易循环开始时调用"""
+    global _executed_ops
+    _executed_ops = set()
+
+
 # ========== 执行工具调用 ==========
 
 def _run_tool(name: str, args: dict):
     """执行一个工具调用并返回原始 Python 对象（非 JSON 字符串）"""
+    global _executed_ops
+
     if name == "get_market_overview":
         return hl_connector.get_market_overview()
     elif name == "get_orderbook":
@@ -91,8 +104,16 @@ def _run_tool(name: str, args: dict):
     elif name == "get_balance":
         return hl_connector.get_balance()
     elif name == "open_trade":
+        key = f"open_trade:{args['coin']}"
+        if key in _executed_ops:
+            return {"warning": f"已在当前周期对 {args['coin']} 开过仓，操作已跳过"}
+        _executed_ops.add(key)
         return hl_connector.open_trade(args["coin"], args["side"], float(args["size"]), int(args.get("leverage", 1)))
     elif name == "close_trade":
+        key = f"close_trade:{args['coin']}"
+        if key in _executed_ops:
+            return {"warning": f"已在当前周期对 {args['coin']} 平过仓，操作已跳过"}
+        _executed_ops.add(key)
         return hl_connector.close_trade(args["coin"])
     elif name == "recall_lessons":
         return memory.recall(args.get("context", ""))
@@ -125,6 +146,7 @@ def run_trade_cycle():
     2. DeepSeek 思考 -> 调工具 -> 结果回送 -> 再思考 -> 最终决策
     3. 保存教训、返回结果
     """
+    _reset_executed_ops()
     # ---- 第 1 步：收集数据 ----
     print(f"\n{'='*40}")
     print(f"交易循环开始：{datetime.datetime.now().strftime('%H:%M:%S')}")

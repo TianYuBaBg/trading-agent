@@ -288,6 +288,12 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1):
         sz_decimals = _get_sz_decimals(coin)
         coin_size = round(size / current_price, sz_decimals)
 
+        # 确保最小名义价值 >= $10（Hyperliquid 要求，向上取整）
+        import math
+        min_sz = math.ceil(10.0 / current_price * (10 ** sz_decimals)) / (10 ** sz_decimals)
+        if coin_size < min_sz:
+            coin_size = min_sz
+
         is_buy = side == "long"
 
         # 市价单（IOC = Immediate-or-Cancel，市价吃单）
@@ -302,7 +308,7 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1):
             "coin": coin,
             "side": side,
             "size": coin_size,
-            "usd_size": size,
+            "usd_size": round(coin_size * current_price, 2),
             "entry_price": current_price,
             "leverage": leverage,
         }

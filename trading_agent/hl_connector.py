@@ -151,6 +151,35 @@ def get_orderbook(coin: str, depth: int = 5):
         return f"获取深度失败：{e}"
 
 
+def get_candles(coin: str, interval: str = "1h", hours: int = 24):
+    """
+    获取某个币的 K 线数据（蜡烛图）
+    coin: "BTC"
+    interval: "1m"/"5m"/"15m"/"1h"/"4h"/"1d"
+    hours: 往回看多少小时
+    返回：[{"time": "HH:MM", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000}, ...]
+    """
+    import time
+    info = _ensure_info()
+    try:
+        now_ms = int(time.time() * 1000)
+        start_ms = now_ms - hours * 3600 * 1000
+        raw = info.candles_snapshot(coin, interval, start_ms, now_ms)
+        candles = []
+        for c in raw:
+            candles.append({
+                "time": time.strftime("%m-%d %H:%M", time.localtime(c["t"] / 1000)),
+                "open": float(c["o"]),
+                "high": float(c["h"]),
+                "low": float(c["l"]),
+                "close": float(c["c"]),
+                "volume": float(c["v"]),
+            })
+        return candles
+    except Exception as e:
+        return f"获取 K 线失败：{e}"
+
+
 def get_positions():
     """
     获取当前持仓
@@ -376,26 +405,36 @@ def _update_trade_close(coin: str, exit_price: float, pnl: float):
 
 def get_trade_history(days: int = 7):
     """
-    获取最近交易记录
+    从链上获取最近成交记录（使用 Hyperliquid 真实成交数据）
     days: 最近几天
-    返回：交易列表，每条包含 open_time, close_time, coin, side, pnl
+    返回：交易列表，每条包含 coin, side, price, size, pnl, time
     """
-    import datetime
-    if not os.path.exists(_TRADES_FILE):
+    import time
+    info = _ensure_info()
+    addr = _ensure_wallet_address()
+    if not addr:
         return []
-    with open(_TRADES_FILE, encoding="utf-8") as f:
-        trades = json.load(f)
-    cutoff = datetime.datetime.now() - datetime.timedelta(days=days)
-    recent = []
-    for t in trades:
-        t_time = t.get("open_time", t.get("close_time", ""))
-        try:
-            t_dt = datetime.datetime.fromisoformat(t_time)
-            if t_dt >= cutoff:
-                recent.append(t)
-        except:
-            recent.append(t)
-    return recent
+    try:
+        fills = info.user_fills(addr)
+        if not isinstance(fills, list):
+            return []
+        cutoff = int(time.time() * 1000) - days * 86400 * 1000
+        recent = []
+        for f in fills:
+            if f["time"] < cutoff:
+                continue
+            recent.append({
+                "coin": f["coin"],
+                "side": "long" if f["side"] == "B" else "short",
+                "price": float(f["px"]),
+                "size": float(f["sz"]),
+                "pnl": float(f.get("closedPnl", 0)),
+                "dir": f.get("dir", ""),
+                "time": time.strftime("%m-%d %H:%M", time.localtime(f["time"] / 1000)),
+            })
+        return recent
+    except Exception as e:
+        return f"获取成交记录失败：{e}"
 
 
 def transfer_spot_to_perp(amount: float):

@@ -28,9 +28,10 @@ _client = OpenAI(api_key=config.DEEPSEEK_API_KEY, base_url=config.DEEPSEEK_BASE_
 _TOOL_DESCRIPTIONS = {
     "get_market_overview": "查看所有币种的最新行情（价格、成交量）",
     "get_orderbook": "查看某个币的买卖盘深度，参数：coin（币种，如 BTC）",
+    "get_candles": "查看某个币的K线趋势，参数：coin（币种），interval（间隔：1m/5m/15m/1h/4h/1d，默认1h），hours（往回看几小时，默认24）",
     "get_positions": "查看当前持仓及盈亏",
     "get_balance": "查看账户总资产和可用余额",
-    "open_trade": "开仓交易，参数：coin（币种），side（long/short），size（USD金额），leverage（杠杆倍数，默认1）",
+    "open_trade": "开仓交易，参数：coin（币种），side（long/short），size（USD金额≥10），leverage（杠杆倍数，默认1）",
     "close_trade": "平仓，参数：coin（币种）",
     "recall_lessons": "回想过去类似情况学到的教训，参数：context（当前市场情况描述）",
     "add_lesson": "记录一条新教训，参数：lesson（教训内容），tags（标签列表），outcome（结果）",
@@ -83,6 +84,8 @@ def _run_tool(name: str, args: dict):
         return hl_connector.get_market_overview()
     elif name == "get_orderbook":
         return hl_connector.get_orderbook(args.get("coin", "BTC"))
+    elif name == "get_candles":
+        return hl_connector.get_candles(args.get("coin", "BTC"), args.get("interval", "1h"), int(args.get("hours", 24)))
     elif name == "get_positions":
         return hl_connector.get_positions()
     elif name == "get_balance":

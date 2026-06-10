@@ -26,10 +26,23 @@ _CONFIG_PATH = os.path.join(os.path.dirname(__file__), "data", "config.json")
 def create_wallet():
     """生成新的 Hyperliquid 钱包"""
     from eth_account import Account
-    import random
+    import json
+    import os
+
+    # 检查是否已有钱包
+    if os.path.exists(_CONFIG_PATH):
+        with open(_CONFIG_PATH) as f:
+            existing = json.load(f)
+        if existing.get("wallet_private_key"):
+            print("\n⚠️  你已经有一个钱包了！创建新钱包会覆盖旧的。")
+            print(f"   当前地址: {existing['wallet_address']}")
+            print(f"   如果旧钱包里还有钱，先转走再创建新的。")
+            confirm = input("\n确认覆盖？(输入 YES 确认): ").strip()
+            if confirm != "YES":
+                print("已取消")
+                return None
 
     print("\n正在生成新钱包...")
-    # eth_account 的私钥生成需要熵
     account = Account.create()
 
     address = account.address

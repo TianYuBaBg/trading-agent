@@ -31,7 +31,7 @@ def create_wallet():
 
     # 检查是否已有钱包
     if os.path.exists(_CONFIG_PATH):
-        with open(_CONFIG_PATH) as f:
+        with open(_CONFIG_PATH, encoding="utf-8") as f:
             existing = json.load(f)
         if existing.get("wallet_private_key"):
             print("\n⚠️  你已经有一个钱包了！创建新钱包会覆盖旧的。")
@@ -54,7 +54,7 @@ def create_wallet():
         "wallet_address": address,
         "note": "这是自动生成的钱包，往这个地址转 USDC 或 ETH 就可以开始交易",
     }
-    with open(_CONFIG_PATH, "w") as f:
+    with open(_CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(config_data, f, ensure_ascii=False, indent=2)
 
     print(f"\n{'='*45}")
@@ -85,7 +85,7 @@ def _ensure_config():
             return True
 
     # 已有配置文件，检查是否有效
-    with open(_CONFIG_PATH) as f:
+    with open(_CONFIG_PATH, encoding="utf-8") as f:
         cfg = json.load(f)
 
     # API 钱包模式：有 main_address 和 api_key 就行
@@ -129,7 +129,7 @@ def _setup_api_wallet():
         "api_key": key,
         "note": "API 钱包模式。main_address 是主钱包地址，api_key 是网站生成的 API 私钥",
     }
-    with open(_CONFIG_PATH, "w") as f:
+    with open(_CONFIG_PATH, "w", encoding="utf-8") as f:
         json.dump(config_data, f, ensure_ascii=False, indent=2)
 
     print(f"\n✅ API 钱包配置完成！main_address: {addr[:20]}...")
@@ -145,6 +145,7 @@ def manual_mode():
     print("  输入你的想法，AI 会先看市场再决策")
     print("  输入 '创建钱包' 生成新钱包")
     print("  输入 'API 钱包' 配置 API 钱包（网站邮箱登录生成）")
+    print("  输入 '转入资金' 把 Spot 的钱转到永续合约账户")
     print("  输入 '复盘' 运行复盘分析")
     print("  输入 '状态' 看当前账户状况")
     print("  输入 '教训' 看历史教训")
@@ -170,6 +171,11 @@ def manual_mode():
 
             if cmd in ["API 钱包", "api"]:
                 _setup_api_wallet()
+                continue
+
+            if cmd in ["转入资金", "转入"]:
+                result = hl_connector.transfer_spot_to_perp(5.8)
+                print(f"转入结果: {result}")
                 continue
 
             if cmd == "复盘":

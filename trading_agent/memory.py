@@ -41,7 +41,7 @@ def _ensure_file():
     """确保 lessons.json 存在"""
     os.makedirs(os.path.dirname(_LESSONS_FILE), exist_ok=True)
     if not os.path.exists(_LESSONS_FILE):
-        with open(_LESSONS_FILE, "w") as f:
+        with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
             json.dump([], f, ensure_ascii=False, indent=2)
 
 
@@ -62,7 +62,7 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     outcome: 结果，如 "亏损2%"
     """
     _ensure_file()
-    with open(_LESSONS_FILE) as f:
+    with open(_LESSONS_FILE, encoding="utf-8") as f:
         lessons = json.load(f)
 
     # 生成向量
@@ -87,7 +87,7 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
         "used_count": 0,
     }
     lessons.append(lesson)
-    with open(_LESSONS_FILE, "w") as f:
+    with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
         json.dump(lessons, f, ensure_ascii=False, indent=2)
 
     print(f"  [记忆] 保存教训 #{lesson['id']}: {lesson_text[:50]}...")
@@ -102,7 +102,7 @@ def recall(context_text: str, top_k: int = 3):
     返回：最相关的教训列表，每条包含 lesson, tags, outcome
     """
     _ensure_file()
-    with open(_LESSONS_FILE) as f:
+    with open(_LESSONS_FILE, encoding="utf-8") as f:
         lessons = json.load(f)
 
     if not lessons:
@@ -113,7 +113,7 @@ def recall(context_text: str, top_k: int = 3):
         recent = lessons[-top_k:]
         for l in recent:
             l["used_count"] = l.get("used_count", 0) + 1
-        with open(_LESSONS_FILE, "w") as f:
+        with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
             json.dump(lessons, f, ensure_ascii=False, indent=2)
         return [
             {"lesson": l["lesson"], "tags": l.get("tags", []), "outcome": l.get("outcome", "")}
@@ -139,7 +139,7 @@ def recall(context_text: str, top_k: int = 3):
                 top = scored[:top_k]
                 for _, l in top:
                     l["used_count"] = l.get("used_count", 0) + 1
-                with open(_LESSONS_FILE, "w") as f:
+                with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
                     json.dump(lessons, f, ensure_ascii=False, indent=2)
                 return [
                     {"lesson": l["lesson"], "tags": l.get("tags", []), "outcome": l.get("outcome", ""),
@@ -168,7 +168,7 @@ def recall(context_text: str, top_k: int = 3):
 def get_all_lessons():
     """获取所有教训（不含 embedding）"""
     _ensure_file()
-    with open(_LESSONS_FILE) as f:
+    with open(_LESSONS_FILE, encoding="utf-8") as f:
         lessons = json.load(f)
     return [
         {"id": l["id"], "date": l["date"], "lesson": l["lesson"],
@@ -181,8 +181,8 @@ def get_all_lessons():
 def delete_lesson(lesson_id: int):
     """删除一条教训"""
     _ensure_file()
-    with open(_LESSONS_FILE) as f:
+    with open(_LESSONS_FILE, encoding="utf-8") as f:
         lessons = json.load(f)
     lessons = [l for l in lessons if l["id"] != lesson_id]
-    with open(_LESSONS_FILE, "w") as f:
+    with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
         json.dump(lessons, f, ensure_ascii=False, indent=2)

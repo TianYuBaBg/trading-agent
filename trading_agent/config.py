@@ -17,7 +17,7 @@ HL_RPC_URL = "https://api.hyperliquid.xyz"
 
 # ========== 安全限制（防止 AI 乱来）==========
 # 单笔最大仓位：钱包总资金的百分比
-MAX_POSITION_SIZE_PCT = 10  # 10%
+MAX_POSITION_SIZE_PCT = 80  # 80%（激进模式）
 
 # 最大杠杆
 MAX_LEVERAGE = 3  # 最高 3 倍

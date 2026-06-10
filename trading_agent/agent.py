@@ -40,7 +40,7 @@ _TOOL_DESCRIPTIONS = {
 # ========== 构建系统提示词 ==========
 
 def _build_system_prompt():
-    return f"""你是 Hyperliquid 永续合约交易员，目标是通过分析和交易盈利。
+    return f"""你是 Hyperliquid 永续合约交易员，核心目标是积极发现机会并盈利。
 
 ## 交易规则
 1. 单笔最大仓位不超过总资金的 {config.MAX_POSITION_SIZE_PCT}%
@@ -48,7 +48,10 @@ def _build_system_prompt():
 3. 每日亏损超过 {config.DAILY_LOSS_LIMIT_PCT}% 时停止交易
 4. 每次开仓前先回想相关教训
 5. 平仓后复盘并记录教训
-6. 宁可错过不可做亏
+6. **核心目标：盈利。积极寻找交易机会，小仓位试单、发现趋势加仓**
+7. 小账户可用高杠杆（3x）提高资金利用率，每笔赚 2-5% 就很好
+8. 不要只会等待，没有明确风险信号就该尝试入场
+9. 亏损不可怕，可怕的是不行动。小亏止损，大赚持有
 
 ## 可用工具
 {json.dumps(_TOOL_DESCRIPTIONS, ensure_ascii=False, indent=2)}
@@ -60,14 +63,16 @@ def _build_system_prompt():
     "tool_calls": [
         {{"name": "工具名", "args": 参数对象或{{}}}}
     ],
-    "reply": "你要回复的话，如果没有要说的话就写空",
-    "need_review": false,  // 是否要做复盘（平仓后设为true）
-    "lesson_to_save": ""   // 如果有要记住的教训，填在这里
+    "reply": "你要回复的话，没有就说空",
+    "need_review": false,
+    "lesson_to_save": ""
 }}
 
-如果要调用工具，tool_calls 里写工具名和参数。
-如果决定不交易，tool_calls 设为空数组。
-工具返回的结果会作为新的消息发给你。"""
+流程说明：
+1. 第一轮：分析当前状态，如果数据不够就调工具获取更多信息
+2. 工具结果会返回给你，根据新数据做最终决策
+3. tool_calls 为空数组 = 最终决策完成（不交易或已执行）
+4. 如果发现交易机会，果断用 open_trade 开仓；如果持仓方向错了，close_trade 平仓"""
 
 
 # ========== 执行工具调用 ==========
@@ -97,16 +102,29 @@ def _run_tool(name: str, args: dict):
     return f"未知工具: {name}"
 
 
-# ========== 单次交易决策循环 ==========
+# ========== JSON 提取工具 ==========
+
+def _extract_json(text: str) -> dict:
+    """从 AI 回复中提取 JSON 对象"""
+    clean = text.strip()
+    if clean.startswith("```"):
+        clean = clean.split("\n", 1)[-1]
+        clean = clean.rsplit("```", 1)[0].strip()
+    brace_start = clean.find("{")
+    brace_end = clean.rfind("}")
+    if brace_start >= 0 and brace_end > brace_start:
+        clean = clean[brace_start:brace_end + 1]
+    return json.loads(clean)
+
+
+# ========== 单次交易决策循环（ReAct） ==========
 
 def run_trade_cycle():
     """
-    执行一次交易循环
-    1. 收集当前状态
-    2. 回想相关教训
-    3. DeepSeek 决策
-    4. 执行
-    5. 返回结果
+    执行一次完整 ReAct 交易循环
+    1. 收集当前状态 + 历史教训
+    2. DeepSeek 思考 -> 调工具 -> 结果回送 -> 再思考 -> 最终决策
+    3. 保存教训、返回结果
     """
     # ---- 第 1 步：收集数据 ----
     print(f"\n{'='*40}")
@@ -117,66 +135,75 @@ def run_trade_cycle():
     positions = hl_connector.get_positions()
     overview = hl_connector.get_market_overview()
 
-    # 把当前状态转成文本
     state_text = f"""
 当前账户：{json.dumps(balance, ensure_ascii=False)}
 当前持仓：{json.dumps(positions, ensure_ascii=False)}
-市场概况：{json.dumps(overview[:5] if isinstance(overview, list) else overview, ensure_ascii=False)}  # 取前5个币
+市场概况：{json.dumps(overview[:8] if isinstance(overview, list) else overview, ensure_ascii=False)}
 """
 
     # ---- 第 2 步：回想教训 ----
     relevant_lessons = memory.recall(state_text)
     lessons_text = json.dumps(relevant_lessons, ensure_ascii=False, indent=2) if relevant_lessons else "暂无相关教训"
 
-    # ---- 第 3 步：DeepSeek 决策 ----
+    # ---- 第 3 步：ReAct 多轮循环 ----
     print("  [Agent] 思考中...")
-    try:
-        response = _client.chat.completions.create(
-            model=config.DEEPSEEK_MODEL,
-            messages=[
-                {"role": "system", "content": _build_system_prompt()},
-                {"role": "user", "content": f"## 当前状态\n{state_text}\n## 相关历史教训\n{lessons_text}\n## 请分析并决定下一步操作"},
-            ],
-            temperature=0.3,
-            response_format={"type": "json_object"},
-        )
 
-        decision_text = response.choices[0].message.content
-        # 提取 JSON
-        clean = decision_text.strip()
-        if clean.startswith("```"):
-            clean = clean.split("\n", 1)[-1]
-            clean = clean.rsplit("```", 1)[0].strip()
-        brace_start = clean.find("{")
-        brace_end = clean.rfind("}")
-        if brace_start >= 0 and brace_end > brace_start:
-            clean = clean[brace_start:brace_end + 1]
-        decision = json.loads(clean)
+    messages = [
+        {"role": "system", "content": _build_system_prompt()},
+        {"role": "user", "content": f"## 当前状态\n{state_text}\n## 相关历史教训\n{lessons_text}\n## 分析市场并决定下一步操作"},
+    ]
 
-    except Exception as e:
-        return {"error": f"AI 决策失败: {e}", "state": state_text}
+    max_rounds = 3
+    all_results = []
+    final_thought = ""
+    final_reply = ""
+    need_review = False
+    lesson_to_save = ""
 
-    # ---- 第 4 步：执行工具调用 ----
-    tool_calls = decision.get("tool_calls", [])
-    results = []
-    for tc in tool_calls:
-        name = tc.get("name", "")
-        args = tc.get("args", {})
-        print(f"  [Agent] 调工具: {name}({args})")
-        result = _run_tool(name, args)
-        print(f"  [Agent] 结果: {str(result)[:100]}...")
-        results.append({"tool": name, "result": result})
+    for _round in range(max_rounds):
+        try:
+            resp = _client.chat.completions.create(
+                model=config.DEEPSEEK_MODEL,
+                messages=messages,
+                temperature=0.7,
+                response_format={"type": "json_object"},
+            )
+            decision = _extract_json(resp.choices[0].message.content)
+        except Exception as e:
+            return {"error": f"AI 决策失败: {e}", "state": state_text}
 
-    # ---- 第 5 步：处理教训和复盘 ----
-    lesson_text = decision.get("lesson_to_save", "")
-    if lesson_text:
-        memory.add_lesson(lesson_text)
+        final_thought = decision.get("thought", "")
+        final_reply = decision.get("reply", "")
+        need_review = decision.get("need_review", False)
+        lesson_to_save = decision.get("lesson_to_save", "")
+
+        tool_calls = decision.get("tool_calls", [])
+        if not tool_calls:
+            break  # AI 做出最终决策
+
+        # 执行工具
+        for tc in tool_calls:
+            name = tc.get("name", "")
+            args = tc.get("args", {})
+            print(f"  [Agent] 调工具: {name}({args})")
+            result = _run_tool(name, args)
+            print(f"  [Agent] 结果: {str(result)[:80]}...")
+            all_results.append({"tool": name, "result": result})
+
+        # 把所有工具结果送回 AI 继续分析
+        messages.append({"role": "assistant", "content": json.dumps(decision, ensure_ascii=False)})
+        all_results_str = json.dumps(all_results, ensure_ascii=False)[:3000]
+        messages.append({"role": "user", "content": f"## 工具返回结果\n{all_results_str}\n## 根据以上数据做最终决策。开仓用 open_trade，平仓用 close_trade，不交易则 tool_calls 留空。"})
+
+    # ---- 第 4 步：保存教训 ----
+    if lesson_to_save:
+        memory.add_lesson(lesson_to_save)
 
     return {
-        "thought": decision.get("thought", ""),
-        "reply": decision.get("reply", ""),
-        "need_review": decision.get("need_review", False),
-        "tool_results": results,
+        "thought": final_thought,
+        "reply": final_reply,
+        "need_review": need_review,
+        "tool_results": all_results,
         "state": state_text,
     }
 
@@ -191,13 +218,11 @@ def run_review():
     print("开始复盘")
     print(f"{'='*40}")
 
-    # 获取近期交易
     trades = hl_connector.get_trade_history(days=7)
     if not trades:
         print("  没有近期交易")
         return
 
-    # 计算统计
     total_pnl = sum(t.get("pnl", 0) for t in trades if t.get("pnl"))
     win_trades = [t for t in trades if t.get("pnl", 0) > 0]
     loss_trades = [t for t in trades if t.get("pnl", 0) < 0]
@@ -214,7 +239,6 @@ def run_review():
     print(f"  总盈亏: {review_data['total_pnl']:.2f} USD")
     print(f"  胜率: {review_data['win_rate']}%")
 
-    # 让 AI 分析
     try:
         response = _client.chat.completions.create(
             model=config.DEEPSEEK_MODEL,
@@ -222,19 +246,18 @@ def run_review():
                 {"role": "system", "content": "你是交易复盘分析师，分析以下近期交易数据，找出问题并提出改进建议。"},
                 {"role": "user", "content": json.dumps(trades, ensure_ascii=False, indent=2)},
             ],
-            temperature=0.3,
+            temperature=0.7,
         )
         analysis = response.choices[0].message.content
         print(f"\n  AI 分析：\n  {analysis}")
 
-        # 从分析中提取教训
         lesson_response = _client.chat.completions.create(
             model=config.DEEPSEEK_MODEL,
             messages=[
                 {"role": "system", "content": "从以下交易复盘分析中提取 1-2 条最重要的教训，以 JSON 格式返回：{\"lessons\": [{\"text\": \"教训内容\", \"tags\": [\"标签1\", \"标签2\"]}]}"},
                 {"role": "user", "content": analysis},
             ],
-            temperature=0.3,
+            temperature=0.7,
             response_format={"type": "json_object"},
         )
         lesson_data = json.loads(lesson_response.choices[0].message.content)

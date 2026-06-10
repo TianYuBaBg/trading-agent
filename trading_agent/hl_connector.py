@@ -17,7 +17,7 @@ from hyperliquid.utils import constants
 from eth_account import Account
 
 # 读取钱包配置
-_CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "config.json")
+_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "data", "config.json")
 
 
 def _load_wallet():
@@ -33,14 +33,14 @@ def _load_wallet():
     """
     if not os.path.exists(_CONFIG_PATH):
         return None, None, None
-    with open(_CONFIG_PATH) as f:
+    with open(_CONFIG_PATH, encoding="utf-8") as f:
         cfg = json.load(f)
 
     # 优先使用 API 钱包模式
     main_addr = cfg.get("main_address", "")
     api_key = cfg.get("api_key", "")
     if main_addr and api_key:
-        return main_addr, api_key, "api"
+        return api_key, main_addr, "api"
 
     # 降级到直接私钥模式
     pk = cfg.get("wallet_private_key", "")
@@ -67,21 +67,31 @@ def _ensure_info():
 def _ensure_exchange():
     global _exchange, _wallet_address
     if _exchange is None:
+        _wallet_address = _ensure_wallet_address()
         sign_key, addr_or_key, mode = _load_wallet()
         if not sign_key:
             raise Exception("请先在 data/config.json 中配置钱包")
 
         if mode == "api":
-            # API 钱包模式：用主钱包地址查，用 API 私钥签名
-            _wallet_address = addr_or_key  # main_address
-            account = Account.from_key(sign_key)  # api_key
+            account = Account.from_key(sign_key)
             _exchange = Exchange(account, constants.MAINNET_API_URL, account_address=_wallet_address)
         else:
-            # 直连模式：私钥既当身份又当签名
             account = Account.from_key(sign_key)
-            _wallet_address = account.address
             _exchange = Exchange(account, constants.MAINNET_API_URL)
     return _exchange
+
+
+def _ensure_wallet_address():
+    """获取钱包地址（优先从配置读取，兼容两种模式）"""
+    global _wallet_address
+    if _wallet_address:
+        return _wallet_address
+    sign_key, addr_or_key, mode = _load_wallet()
+    if mode == "api":
+        _wallet_address = addr_or_key
+    elif sign_key:
+        _wallet_address = Account.from_key(sign_key).address
+    return _wallet_address
 
 
 # ========== 查询工具 ==========
@@ -94,17 +104,28 @@ def get_market_overview():
     info = _ensure_info()
     try:
         mids = info.all_mids()
-        # 获取成交量数据
-        ctxs = info.asset_ctxs() if hasattr(info, "asset_ctxs") else []
+        # 获取成交量 / 资金费率等上下文数据
+        meta_ctxs = info.meta_and_asset_ctxs()
+        universe = meta_ctxs[0].get("universe", [])
+        ctxs = meta_ctxs[1] if len(meta_ctxs) > 1 else []
+        # 建立 coin -> ctx 的映射（按下标匹配）
+        coin_to_ctx = {}
+        for i, asset in enumerate(universe):
+            coin = asset["name"]
+            if i < len(ctxs):
+                coin_to_ctx[coin] = ctxs[i]
+
         overview = []
         for coin, mid in mids.items():
+            # 过滤掉 Spot 内部编号（# 开头），只保留标准永续合约币种
+            if coin.startswith("#"):
+                continue
             item = {"coin": coin, "mid": float(mid)}
-            # 补充成交量（如果有）
-            for ctx in ctxs:
-                if ctx.get("coin") == coin:
-                    item["volume"] = float(ctx.get("volume", 0))
-                    item["funding"] = float(ctx.get("funding", 0))
-                    break
+            # 补充成交量和资金费率
+            ctx = coin_to_ctx.get(coin)
+            if ctx:
+                item["volume"] = float(ctx.get("dayNtlVlm", 0))
+                item["funding"] = float(ctx.get("funding", 0))
             overview.append(item)
         return overview
     except Exception as e:
@@ -120,9 +141,11 @@ def get_orderbook(coin: str, depth: int = 5):
     """
     info = _ensure_info()
     try:
-        book = info.l2_book(coin)
-        bids = [[float(b[0]), float(b[1])] for b in book["bids"][:depth]]
-        asks = [[float(a[0]), float(a[1])] for a in book["asks"][:depth]]
+        book = info.l2_snapshot(coin)
+        levels = book["levels"]
+        # levels[0] = bids（买盘）, levels[1] = asks（卖盘）
+        bids = [[float(b["px"]), float(b["sz"])] for b in levels[0][:depth]]
+        asks = [[float(a["px"]), float(a["sz"])] for a in levels[1][:depth]]
         return {"bids": bids, "asks": asks}
     except Exception as e:
         return f"获取深度失败：{e}"
@@ -134,20 +157,25 @@ def get_positions():
     返回：[{"coin": "BTC", "size": 0.1, "entry_px": 50000, "pnl": 50, ...}]
     """
     info = _ensure_info()
+    addr = _ensure_wallet_address()
+    if not addr:
+        return "未配置钱包地址"
     try:
-        state = info.user_state(_wallet_address)
+        state = info.user_state(addr)
         positions = []
         for pos in state.get("assetPositions", []):
             p = pos["position"]
-            if float(p.get("szi", 0)) != 0:
-                positions.append({
-                    "coin": p["coin"],
-                    "size": float(p["szi"]),
-                    "entry_px": float(p.get("entryPx", 0)),
-                    "pnl": float(p.get("unrealizedPnl", 0)),
-                    "leverage": float(p.get("leverage", {}).get("value", 1)),
-                    "liquidation_px": float(p.get("liquidationPx", 0)),
-                })
+            szi = p.get("szi", 0)
+            if szi is None or float(szi) == 0:
+                continue
+            positions.append({
+                "coin": p["coin"],
+                "size": float(szi),
+                "entry_px": float(p.get("entryPx", 0) or 0),
+                "pnl": float(p.get("unrealizedPnl", 0) or 0),
+                "leverage": float(p.get("leverage", {}).get("value", 1) or 1),
+                "liquidation_px": float(p.get("liquidationPx") or 0),
+            })
         return positions
     except Exception as e:
         return f"获取持仓失败：{e}"
@@ -155,24 +183,56 @@ def get_positions():
 
 def get_balance():
     """
-    获取账户余额
+    获取账户余额（Perp + Spot 统一视图）
     返回：{"wallet_value": 1000, "available": 800, "margin_used": 200}
     """
     info = _ensure_info()
+    addr = _ensure_wallet_address()
+    if not addr:
+        return "未配置钱包地址"
     try:
-        state = info.user_state(_wallet_address)
-        margin = state.get("marginSummary", {})
+        state = info.user_state(addr)
         cross = state.get("crossMarginSummary", {})
+        perp_value = float(cross.get("accountValue", 0))
+        margin_used = float(cross.get("totalMarginUsed", 0))
+
+        # 也查 Spot 余额
+        spot_value = 0.0
+        try:
+            spot_state = info.spot_user_state(addr)
+            for b in spot_state.get("balances", []):
+                if b.get("coin") == "USDC":
+                    spot_value = float(b.get("total", 0))
+                    break
+        except Exception:
+            pass
+
+        total = perp_value + spot_value
         return {
-            "wallet_value": float(cross.get("accountValue", 0)),
-            "margin_used": float(cross.get("totalMarginUsed", 0)),
-            "available": float(cross.get("accountValue", 0)) - float(cross.get("totalMarginUsed", 0)),
+            "wallet_value": round(total, 2),
+            "margin_used": round(margin_used, 2),
+            "available": round(total - margin_used, 2),
+            "perp_value": round(perp_value, 2),
+            "spot_value": round(spot_value, 2),
         }
     except Exception as e:
         return f"获取余额失败：{e}"
 
 
 # ========== 交易工具 ==========
+
+def _get_sz_decimals(coin: str) -> int:
+    """获取币种的数量精度（szDecimals）"""
+    info = _ensure_info()
+    try:
+        meta = info.meta()
+        for asset in meta.get("universe", []):
+            if asset["name"] == coin:
+                return asset["szDecimals"]
+        return 4
+    except Exception:
+        return 4
+
 
 def open_trade(coin: str, side: str, size: float, leverage: int = 1):
     """
@@ -195,8 +255,9 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1):
         if current_price == 0:
             return f"无法获取 {coin} 价格"
 
-        # 计算币数量
-        coin_size = round(size / current_price, 4)
+        # 按 szDecimals 精度计算币数量
+        sz_decimals = _get_sz_decimals(coin)
+        coin_size = round(size / current_price, sz_decimals)
 
         is_buy = side == "long"
 
@@ -272,12 +333,12 @@ def _save_trade(trade: dict):
     import datetime
     trades = []
     if os.path.exists(_TRADES_FILE):
-        with open(_TRADES_FILE) as f:
+        with open(_TRADES_FILE, encoding="utf-8") as f:
             trades = json.load(f)
     trade["open_time"] = datetime.datetime.now().isoformat()
     trade["id"] = len(trades) + 1
     trades.append(trade)
-    with open(_TRADES_FILE, "w") as f:
+    with open(_TRADES_FILE, "w", encoding="utf-8") as f:
         json.dump(trades, f, ensure_ascii=False, indent=2)
 
 
@@ -290,7 +351,7 @@ def get_trade_history(days: int = 7):
     import datetime
     if not os.path.exists(_TRADES_FILE):
         return []
-    with open(_TRADES_FILE) as f:
+    with open(_TRADES_FILE, encoding="utf-8") as f:
         trades = json.load(f)
     cutoff = datetime.datetime.now() - datetime.timedelta(days=days)
     recent = []
@@ -303,3 +364,13 @@ def get_trade_history(days: int = 7):
         except:
             recent.append(t)
     return recent
+
+
+def transfer_spot_to_perp(amount: float):
+    """把 USDC 从 Spot 转到永续合约账户"""
+    ex = _ensure_exchange()
+    try:
+        result = ex.usd_class_transfer(amount, to_perp=True)
+        return {"status": "ok", "amount": amount, "raw": str(result)[:200]}
+    except Exception as e:
+        return f"转账失败：{e}"

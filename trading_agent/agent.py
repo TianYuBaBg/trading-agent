@@ -78,28 +78,24 @@ def _build_system_prompt():
 # ========== 执行工具调用 ==========
 
 def _run_tool(name: str, args: dict):
-    """执行一个工具调用并返回结果"""
+    """执行一个工具调用并返回原始 Python 对象（非 JSON 字符串）"""
     if name == "get_market_overview":
-        return json.dumps(hl_connector.get_market_overview(), ensure_ascii=False, indent=2)
+        return hl_connector.get_market_overview()
     elif name == "get_orderbook":
-        return json.dumps(hl_connector.get_orderbook(args.get("coin", "BTC")), ensure_ascii=False, indent=2)
+        return hl_connector.get_orderbook(args.get("coin", "BTC"))
     elif name == "get_positions":
-        return json.dumps(hl_connector.get_positions(), ensure_ascii=False, indent=2)
+        return hl_connector.get_positions()
     elif name == "get_balance":
-        return json.dumps(hl_connector.get_balance(), ensure_ascii=False, indent=2)
+        return hl_connector.get_balance()
     elif name == "open_trade":
-        return json.dumps(hl_connector.open_trade(
-            args["coin"], args["side"], float(args["size"]), int(args.get("leverage", 1))
-        ), ensure_ascii=False, indent=2)
+        return hl_connector.open_trade(args["coin"], args["side"], float(args["size"]), int(args.get("leverage", 1)))
     elif name == "close_trade":
-        return json.dumps(hl_connector.close_trade(args["coin"]), ensure_ascii=False, indent=2)
+        return hl_connector.close_trade(args["coin"])
     elif name == "recall_lessons":
-        lessons = memory.recall(args.get("context", ""))
-        return json.dumps(lessons, ensure_ascii=False, indent=2)
+        return memory.recall(args.get("context", ""))
     elif name == "add_lesson":
-        lesson = memory.add_lesson(args["lesson"], args.get("tags", []), args.get("outcome", ""))
-        return json.dumps(lesson, ensure_ascii=False, indent=2)
-    return f"未知工具: {name}"
+        return memory.add_lesson(args["lesson"], args.get("tags", []), args.get("outcome", ""))
+    return {"error": f"未知工具: {name}"}
 
 
 # ========== JSON 提取工具 ==========

@@ -264,6 +264,11 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1):
         # 市价单（IOC = Immediate-or-Cancel，市价吃单）
         result = ex.market_open(coin, is_buy, coin_size, current_price, slippage=0.01)
 
+        # 检查订单是否被拒绝（如低于最小 $10）
+        statuses = result.get("response", {}).get("data", {}).get("statuses", [])
+        if statuses and "error" in statuses[0]:
+            return f"开仓失败：{statuses[0]['error']}"
+
         trade_record = {
             "coin": coin,
             "side": side,
@@ -306,6 +311,11 @@ def close_trade(coin: str, size: float = None):
 
         close_sz = abs(pos["size"]) if size is None else size
         result = ex.market_close(coin, close_sz, current_price, slippage=0.01)
+
+        # 检查关闭订单是否被拒绝
+        statuses = result.get("response", {}).get("data", {}).get("statuses", [])
+        if statuses and "error" in statuses[0]:
+            return f"平仓失败：{statuses[0]['error']}"
 
         # 计算盈亏
         pnl = (current_price - pos["entry_px"]) * close_sz

@@ -23,21 +23,69 @@ from trading_agent import hl_connector
 _CONFIG_PATH = os.path.join(os.path.dirname(__file__), "data", "config.json")
 
 
+def create_wallet():
+    """生成新的 Hyperliquid 钱包"""
+    from eth_account import Account
+    import random
+
+    print("\n正在生成新钱包...")
+    # eth_account 的私钥生成需要熵
+    account = Account.create()
+
+    address = account.address
+    private_key = account.key.hex()
+
+    # 保存到 config.json
+    config_data = {
+        "wallet_private_key": private_key,
+        "wallet_address": address,
+        "note": "这是自动生成的钱包，往这个地址转 USDC 或 ETH 就可以开始交易",
+    }
+    with open(_CONFIG_PATH, "w") as f:
+        json.dump(config_data, f, ensure_ascii=False, indent=2)
+
+    print(f"\n{'='*45}")
+    print(f"  🎉 钱包已创建！")
+    print(f"  {'='*45}")
+    print(f"  地址: {address}")
+    print(f"  私钥: {private_key[:20]}...（已保存到 config.json）")
+    print(f"  {'='*45}")
+    print(f"  ⚠️  重要：往这个地址转 USDC 才能交易")
+    print(f"  ⚠️  私钥存在你本地，不要外传")
+    print(f"  {'='*45}\n")
+
+    return address
+
+
 def _ensure_config():
-    """确保配置文件存在"""
+    """确保配置文件存在，不存在则提示创建钱包"""
     if not os.path.exists(_CONFIG_PATH):
-        example = {
-            "wallet_private_key": "",
-            "note": "去 Hyperliquid 导出你的钱包私钥填入上面",
-        }
-        with open(_CONFIG_PATH, "w") as f:
-            json.dump(example, f, ensure_ascii=False, indent=2)
-        print("请在 data/config.json 中配置 wallet_private_key")
-        return False
+        print("检测到首次使用，需要创建一个钱包。")
+        print("输入 Y 创建新钱包，输入 N 手动配置已有钱包")
+        choice = input("\n是否创建钱包？(Y/n): ").strip().lower()
+        if choice in ["", "y", "yes"]:
+            create_wallet()
+            return True
+        else:
+            example = {
+                "wallet_private_key": "",
+                "wallet_address": "",
+                "note": "填写你的 Hyperliquid 钱包私钥",
+            }
+            with open(_CONFIG_PATH, "w") as f:
+                json.dump(example, f, ensure_ascii=False, indent=2)
+            print("请在 data/config.json 中配置 wallet_private_key")
+            return False
+
     with open(_CONFIG_PATH) as f:
         cfg = json.load(f)
     if not cfg.get("wallet_private_key"):
-        print("请在 data/config.json 中配置 wallet_private_key")
+        print("config.json 中缺少 wallet_private_key")
+        print("输入 Y 重新创建钱包，输入 N 手动配置")
+        choice = input("\n重新创建钱包？(Y/n): ").strip().lower()
+        if choice in ["", "y", "yes"]:
+            create_wallet()
+            return True
         return False
     return True
 
@@ -49,6 +97,7 @@ def manual_mode():
     print("=" * 45)
     print("  交易智能体 — 手动模式")
     print("  输入你的想法，AI 会先看市场再决策")
+    print("  输入 '创建钱包' 生成新钱包")
     print("  输入 '复盘' 运行复盘分析")
     print("  输入 '状态' 看当前账户状况")
     print("  输入 '教训' 看历史教训")
@@ -66,6 +115,10 @@ def manual_mode():
             if cmd == "状态":
                 print(f"余额: {hl_connector.get_balance()}")
                 print(f"持仓: {hl_connector.get_positions()}")
+                continue
+
+            if cmd in ["创建钱包", "新建钱包"]:
+                create_wallet()
                 continue
 
             if cmd == "复盘":

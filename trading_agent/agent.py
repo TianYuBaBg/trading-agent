@@ -138,7 +138,7 @@ def run_trade_cycle():
     state_text = f"""
 当前账户：{json.dumps(balance, ensure_ascii=False)}
 当前持仓：{json.dumps(positions, ensure_ascii=False)}
-市场概况：{json.dumps(overview[:8] if isinstance(overview, list) else overview, ensure_ascii=False)}
+市场概况：{json.dumps(overview[:20] if isinstance(overview, list) else overview, ensure_ascii=False)}
 """
 
     # ---- 第 2 步：回想教训 ----

@@ -117,8 +117,8 @@ def get_market_overview():
 
         overview = []
         for coin, mid in mids.items():
-            # 过滤掉 Spot 内部编号（# 开头），只保留标准永续合约币种
-            if coin.startswith("#"):
+            # 过滤 Spot 内部编号（# 或 @ 开头），只保留标准永续合约币种
+            if coin.startswith("#") or coin.startswith("@"):
                 continue
             item = {"coin": coin, "mid": float(mid)}
             # 补充成交量和资金费率

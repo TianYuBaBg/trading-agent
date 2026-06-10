@@ -1,5 +1,5 @@
 {
-  "wallet_private_key": "9cbefedeebcb590fb68a2ddafacd00ba042054c5ebbfdb6aa817ba93fbf4d2e3",
-  "wallet_address": "0x543908CD7fa06367eF9e85A98454ae614ed1B5f1",
+  "wallet_private_key": "20030183b4a2a89bdc2274e6b2eb799c3bfcbac0c956688f06445b37c98c919e",
+  "wallet_address": "0xC4f4aDFB91B5F6be0A6d2eA2822b2cbb4A0a7266",
   "note": "这是自动生成的钱包，往这个地址转 USDC 或 ETH 就可以开始交易"
 }

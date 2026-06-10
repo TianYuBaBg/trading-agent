@@ -23,6 +23,8 @@ python -m trading_agent.main
 python -m trading_agent.main --auto
 ```
 
+> 详细使用教程见 [docs/tutorial.md](docs/tutorial.md)
+
 ## 项目结构
 
 ```

@@ -39,9 +39,21 @@ def _get_model():
 
 
 def _ensure_file():
-    """确保 lessons.json 存在"""
+    """确保 lessons.json 存在且内容有效"""
     os.makedirs(os.path.dirname(_LESSONS_FILE), exist_ok=True)
     if not os.path.exists(_LESSONS_FILE):
+        with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
+            json.dump([], f, ensure_ascii=False, indent=2)
+        return
+    # 检查现有文件是否损坏
+    try:
+        with open(_LESSONS_FILE, encoding="utf-8") as f:
+            json.load(f)
+    except (json.JSONDecodeError, ValueError):
+        import shutil
+        backup = _LESSONS_FILE + ".bak"
+        shutil.copy2(_LESSONS_FILE, backup)
+        print(f"  [记忆] lessons.json 损坏，已备份到 {backup}，重新创建")
         with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
             json.dump([], f, ensure_ascii=False, indent=2)
 

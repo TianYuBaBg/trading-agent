@@ -349,14 +349,15 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1):
 
         # 检查订单状态
         statuses = result.get("response", {}).get("data", {}).get("statuses", [])
-        if statuses and isinstance(statuses[0], dict):
-            first = statuses[0]
-            if "error" in first:
-                return f"开仓失败：{first['error']}"
-            if "resting" in first:
-                return f"开仓未成交：订单未立即成交（挂单中）"
-            # 提取实际成交均价（avgPx），比 all_mids 更精确
-            current_price = _get_fill_price(statuses, current_price)
+        if not statuses or not isinstance(statuses[0], dict):
+            return f"开仓失败：订单返回状态异常（statuses 为空或格式错误），raw={str(result)[:200]}"
+        first = statuses[0]
+        if "error" in first:
+            return f"开仓失败：{first['error']}"
+        if "resting" in first:
+            return f"开仓未成交：订单未立即成交（挂单中）"
+        # 提取实际成交均价（avgPx），比 all_mids 更精确
+        current_price = _get_fill_price(statuses, current_price)
 
         trade_record = {
             "coin": coin,
@@ -404,14 +405,15 @@ def close_trade(coin: str, size: float = None):
 
         # 检查平仓订单状态
         statuses = result.get("response", {}).get("data", {}).get("statuses", [])
-        if statuses and isinstance(statuses[0], dict):
-            first = statuses[0]
-            if "error" in first:
-                return f"平仓失败：{first['error']}"
-            if "resting" in first:
-                return f"平仓未成交：订单未立即成交（挂单中）"
-            # 提取实际成交价（avgPx），比 all_mids 的中间价更精确
-            current_price = _get_fill_price(statuses, current_price)
+        if not statuses or not isinstance(statuses[0], dict):
+            return f"平仓失败：订单返回状态异常（statuses 为空或格式错误），raw={str(result)[:200]}"
+        first = statuses[0]
+        if "error" in first:
+            return f"平仓失败：{first['error']}"
+        if "resting" in first:
+            return f"平仓未成交：订单未立即成交（挂单中）"
+        # 提取实际成交价（avgPx），比 all_mids 的中间价更精确
+        current_price = _get_fill_price(statuses, current_price)
 
         # 计算盈亏
         pnl = (current_price - pos["entry_px"]) * close_sz

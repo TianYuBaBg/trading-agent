@@ -21,6 +21,9 @@ import numpy as np
 
 _LESSONS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "lessons.json")
 
+# 编译一次，多处复用
+_PUNC_RE = re.compile(r"\W+")
+
 # ---------- 向量模型 ----------
 _embedding_model = None
 
@@ -87,11 +90,10 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
         tags = [t.strip() for t in tags.split(",") if t.strip()]
 
     # 去重：去除非文字符号后前 25 字相同，或包含关系
-    _punc = re.compile(r"\W+")
-    clean = _punc.sub("", lesson_text)[:25]
+    clean = _PUNC_RE.sub("", lesson_text)[:25]
     for existing in lessons:
         existing_text = existing.get("lesson", "")
-        existing_clean = _punc.sub("", existing_text)[:25]
+        existing_clean = _PUNC_RE.sub("", existing_text)[:25]
         if clean == existing_clean or clean in existing_text or existing_clean in lesson_text:
             return existing
 

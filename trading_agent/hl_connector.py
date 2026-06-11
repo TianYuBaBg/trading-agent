@@ -463,14 +463,15 @@ def _update_trade_close(coin: str, exit_price: float, pnl: float):
             trades = json.load(f)
     except (json.JSONDecodeError, ValueError):
         trades = []
-    # 标记该币种所有未平仓记录为已平仓（包括历史幻影单）
+    # 标记该币种最近一笔未平仓记录为已平仓
     now = datetime.datetime.now().isoformat()
-    for t in trades:
+    for t in reversed(trades):
         if t.get("coin") == coin and not t.get("close_time"):
             t["close_time"] = now
             t["exit_price"] = exit_price
             t["pnl"] = round(pnl, 2)
             t["status"] = "closed"
+            break  # 只关最近一笔，避免多笔重复的 PnL
     with open(_TRADES_FILE, "w", encoding="utf-8") as f:
         json.dump(trades, f, ensure_ascii=False, indent=2)
 

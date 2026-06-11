@@ -175,10 +175,10 @@ def recall(context_text: str, top_k: int = 3):
 
                 # 向量结果不足 top_k 时，用关键词匹配补充无 embedding 的教训
                 if len(top) < top_k:
-                    selected_ids = {id(l[1]) for l in top}
+                    selected_ids = {l[1].get("id") for l in top}
                     keywords = set(context_text.lower().split())
                     ctx_chinese = set(re.findall(r'[一-鿿]', context_text.lower()))
-                    remaining = [l for l in lessons if id(l) not in selected_ids and not l.get("embedding")]
+                    remaining = [l for l in lessons if l.get("id") not in selected_ids and not l.get("embedding")]
                     fallback = []
                     for l in remaining:
                         score = 0

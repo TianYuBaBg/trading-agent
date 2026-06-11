@@ -228,6 +228,10 @@ def recall(context_text: str, top_k: int = 3):
             score += overlap * 5
         scored.append((score, l))
     scored.sort(key=lambda x: -x[0])
+    for _, l in scored[:top_k]:
+        l["used_count"] = l.get("used_count", 0) + 1
+    with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
+        json.dump(lessons, f, ensure_ascii=False, indent=2)
     return [
         {"lesson": l["lesson"], "tags": l.get("tags", []), "outcome": l.get("outcome", "")}
         for _, l in scored[:top_k]

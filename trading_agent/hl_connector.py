@@ -490,11 +490,16 @@ def close_trade(coin: str, size: float = None, _positions=None):
         # 更新交易记录
         _update_trade_close(coin, current_price, pnl)
 
+        # 返回剩余数量，方便调用方判断是否为全平（remaining=0 表示已全部平完）
+        sz_decimals = _get_sz_decimals(coin)
+        remaining = round(max(0, max_sz - close_sz), sz_decimals)
+
         return {
             "status": "已平仓",
             "coin": coin,
             "exit_price": current_price,
             "pnl": round(pnl, 2),
+            "remaining_size": remaining,
             "raw": str(result)[:200],
         }
     except Exception as e:

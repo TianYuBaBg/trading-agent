@@ -83,7 +83,6 @@ def _cosine_similarity(a, b):
 def _increment_used(ids_to_inc, lessons=None):
     """将指定 id 的教训 used_count 加 1，写回文件
     lessons: 可选，已加载的教训列表，避免重复读取文件"""
-    global _lessons_cache
     if not ids_to_inc:
         return
     if lessons is None:

@@ -143,7 +143,8 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
             return {"warning": f"已在当前周期对 {coin} 平过仓，操作已跳过"}
         result = hl_connector.close_trade(coin, size=args.get("size"), _positions=_positions)
         if isinstance(result, dict) and result.get("status") == "已平仓":
-            _executed_ops.add(key)
+            if result.get("remaining_size", 0) == 0:  # 仅全平时标记为已执行，部分平保留重试
+                _executed_ops.add(key)
         return result
     elif name == "recall_lessons":
         return memory.recall(args.get("context", ""), int(args.get("top_k") or 3))

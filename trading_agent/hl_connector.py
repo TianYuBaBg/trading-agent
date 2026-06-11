@@ -332,7 +332,7 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1):
             pos_list = get_positions()
             existing_notional = 0
             if isinstance(pos_list, list):
-                existing_notional = sum(abs(p["size"]) * p.get("entry_px", 0) for p in pos_list)
+                existing_notional = sum(abs(p["size"]) * float(mids.get(p["coin"], p.get("entry_px", 0))) for p in pos_list)
             new_notional = coin_size * current_price
             total_notional = existing_notional + new_notional
             max_allowed = total_value * (config.MAX_POSITION_SIZE_PCT / 100)

@@ -423,7 +423,8 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
             return "开仓失败：订单返回空结果"
 
         # 检查订单状态
-        statuses = result.get("response", {}).get("data", {}).get("statuses", [])
+        statuses = result.get("response") or {}
+        statuses = (statuses.get("data") or {}).get("statuses") or []
         if not statuses or not isinstance(statuses[0], dict):
             return f"开仓失败：订单返回状态异常（statuses 为空或格式错误），raw={str(result)[:200]}"
         first = statuses[0]
@@ -496,7 +497,8 @@ def close_trade(coin: str, size=None, _positions=None):
             return "平仓失败：订单返回空结果"
 
         # 检查平仓订单状态
-        statuses = result.get("response", {}).get("data", {}).get("statuses", [])
+        statuses = result.get("response") or {}
+        statuses = (statuses.get("data") or {}).get("statuses") or []
         if not statuses or not isinstance(statuses[0], dict):
             return f"平仓失败：订单返回状态异常（statuses 为空或格式错误），raw={str(result)[:200]}"
         first = statuses[0]

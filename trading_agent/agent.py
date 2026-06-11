@@ -147,7 +147,16 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
         key = f"close_trade:{coin}"
         if key in _executed_ops:
             return {"warning": f"已在当前周期对 {coin} 平过仓，操作已跳过"}
-        result = hl_connector.close_trade(coin, size=args.get("size"), _positions=_positions)
+        size_arg = args.get("size")
+        if size_arg is not None:
+            try:
+                size_val = abs(float(size_arg))
+                if size_val <= 0:
+                    return {"error": "平仓失败：size 必须为正数"}
+                size_arg = size_val
+            except (TypeError, ValueError):
+                return {"error": f"平仓失败：size 参数格式无效（{size_arg}）"}
+        result = hl_connector.close_trade(coin, size=size_arg, _positions=_positions)
         if isinstance(result, dict) and result.get("status") == "已平仓":
             if result.get("remaining_size", 0) == 0:  # 仅全平时标记为已执行，部分平保留重试
                 _executed_ops.add(key)
@@ -166,7 +175,10 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
             return {"status": "未保存", "reason": "教训内容过短（少于5字符）或重复"}
         return {"status": "已保存", "lesson": result}
     elif name == "transfer_spot_to_perp":
-        amount = float(args.get("amount") or 0)
+        try:
+            amount = float(args.get("amount") or 0)
+        except (TypeError, ValueError):
+            return {"error": f"转账失败：amount 参数格式无效（{args.get('amount')}）"}
         if amount <= 0:
             return {"error": "转账失败：amount 必须为正数"}
         return hl_connector.transfer_spot_to_perp(amount)

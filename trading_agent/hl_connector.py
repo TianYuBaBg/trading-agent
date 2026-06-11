@@ -253,7 +253,7 @@ def get_positions():
             if isinstance(lev, dict):
                 lev = lev.get("value", 1)
             positions.append({
-                "coin": p.get("coin", ""),
+                "coin": p.get("coin") or "",
                 "size": float(szi),
                 "direction": "long" if float(szi) > 0 else "short",
                 "entry_px": float(p.get("entryPx", 0) or 0),

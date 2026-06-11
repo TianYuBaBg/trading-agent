@@ -42,23 +42,23 @@ def _get_model():
     return _embedding_model if _embedding_model else None
 
 
-def _ensure_file():
-    """确保 lessons.json 存在且内容有效"""
+def _load_lessons():
+    """读取 lessons.json，确保文件有效，返回 lessons 列表"""
     os.makedirs(os.path.dirname(_LESSONS_FILE), exist_ok=True)
     if not os.path.exists(_LESSONS_FILE):
         with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
             json.dump([], f, ensure_ascii=False, indent=2)
-        return
-    # 检查现有文件是否损坏
+        return []
     try:
         with open(_LESSONS_FILE, encoding="utf-8") as f:
-            json.load(f)
+            return json.load(f)
     except (json.JSONDecodeError, ValueError):
         backup = _LESSONS_FILE + ".bak"
         shutil.copy2(_LESSONS_FILE, backup)
         print(f"  [记忆] lessons.json 损坏，已备份到 {backup}，重新创建")
         with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
             json.dump([], f, ensure_ascii=False, indent=2)
+        return []
 
 
 def _cosine_similarity(a, b):
@@ -72,9 +72,7 @@ def _increment_used(ids_to_inc):
     """将指定 id 的教训 used_count 加 1，写回文件"""
     if not ids_to_inc:
         return
-    _ensure_file()
-    with open(_LESSONS_FILE, encoding="utf-8") as f:
-        lessons = json.load(f)
+    lessons = _load_lessons()
     for l in lessons:
         if l.get("id") in ids_to_inc:
             l["used_count"] = l.get("used_count", 0) + 1
@@ -108,9 +106,7 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     tags: 标签，如 ["btc", "追多", "fomo"]
     outcome: 结果，如 "亏损2%"
     """
-    _ensure_file()
-    with open(_LESSONS_FILE, encoding="utf-8") as f:
-        lessons = json.load(f)
+    lessons = _load_lessons()
 
     if not isinstance(lesson_text, str):
         return None
@@ -169,11 +165,9 @@ def recall(context_text: str, top_k: int = 3):
     top_k: 返回前几条（限制在 1~20）
     返回：最相关的教训列表，每条包含 lesson, tags, outcome
     """
-    _ensure_file()
     context_text = context_text or ""
     top_k = max(1, min(int(top_k), 20))
-    with open(_LESSONS_FILE, encoding="utf-8") as f:
-        lessons = json.load(f)
+    lessons = _load_lessons()
 
     if not lessons:
         return []
@@ -239,9 +233,7 @@ def recall(context_text: str, top_k: int = 3):
 
 def get_all_lessons():
     """获取所有教训（不含 embedding）"""
-    _ensure_file()
-    with open(_LESSONS_FILE, encoding="utf-8") as f:
-        lessons = json.load(f)
+    lessons = _load_lessons()
     return [
         {"id": l.get("id", i + 1), "date": l.get("date", ""), "lesson": l.get("lesson", ""),
          "tags": l.get("tags", []), "outcome": l.get("outcome", ""),

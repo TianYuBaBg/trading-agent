@@ -214,13 +214,3 @@ def get_all_lessons():
          "used_count": l.get("used_count", 0)}
         for l in lessons
     ]
-
-
-def delete_lesson(lesson_id: int):
-    """删除一条教训"""
-    _ensure_file()
-    with open(_LESSONS_FILE, encoding="utf-8") as f:
-        lessons = json.load(f)
-    lessons = [l for l in lessons if l["id"] != lesson_id]
-    with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
-        json.dump(lessons, f, ensure_ascii=False, indent=2)

@@ -560,9 +560,11 @@ def get_trade_history(days: int = 7):
                 continue
             if price <= 0 or size <= 0:
                 continue
+            raw_side = f.get("side")
+            side_str = "long" if raw_side == "B" else "short" if raw_side == "S" else "unknown"
             recent.append({
                 "coin": f.get("coin", ""),
-                "side": "long" if f.get("side") == "B" else "short",
+                "side": side_str,
                 "price": price,
                 "size": size,
                 "pnl": float(f.get("closedPnl") or 0),
@@ -579,6 +581,8 @@ def transfer_spot_to_perp(amount: float):
     ex = _ensure_exchange()
     try:
         result = ex.usd_class_transfer(amount, to_perp=True)
+        if not result:
+            return "转账失败：SDK 返回空结果"
         # SDK 可能在返回的 dict 中嵌了错误
         raw_str = str(result)
         if '"status":"err"' in raw_str or '"status": "err"' in raw_str or '"response":"Must deposit"' in raw_str:

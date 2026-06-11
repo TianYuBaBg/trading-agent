@@ -224,6 +224,7 @@ def run_trade_cycle():
                     msg = f"今日亏损 ${today_pnl:.2f} 超过限制 ${-loss_limit:.2f}（{config.DAILY_LOSS_LIMIT_PCT}%），停止交易"
                     print(f"  [风控] {msg}")
                     return {
+                        "error": msg,
                         "thought": msg,
                         "reply": msg,
                         "need_review": True,

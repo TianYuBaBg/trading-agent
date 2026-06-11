@@ -77,7 +77,7 @@ def _build_system_prompt():
     ],
     "reply": "你要回复的话，没有就说空",
     "need_review": false,
-    "lesson_to_save": ""  // 也可传对象 {"text": "教训", "tags": ["btc"], "outcome": "亏损2%"}
+    "lesson_to_save": ""  // 也可传对象 {{"text": "教训", "tags": ["btc"], "outcome": "亏损2%"}}
 }}
 
 流程说明：

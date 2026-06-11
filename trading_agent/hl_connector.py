@@ -209,11 +209,10 @@ def get_candles(coin: str, interval: str = "1h", hours: int = 24):
         if not raw:
             return []
         # 限制最多返回 200 条，防止 1m/5m 线数据量撑爆 prompt
-        # 从尾部采样确保最新蜡烛不被跳过
+        # 从尾部逆向采样，确保最新蜡烛始终被包含
         step = max(1, len(raw) // 200)
-        tail_start = max(0, len(raw) - step * 200)
         candles = []
-        for i in range(tail_start, len(raw), step):
+        for i in range(len(raw) - 1, -1, -step):
             c = raw[i]
             candles.append({
                 "time": time.strftime("%m-%d %H:%M", time.localtime(c["t"] / 1000)),
@@ -223,6 +222,9 @@ def get_candles(coin: str, interval: str = "1h", hours: int = 24):
                 "close": float(c["c"]),
                 "volume": float(c["v"]),
             })
+            if len(candles) >= 200:
+                break
+        candles.reverse()  # 恢复时间正序
         return candles
     except Exception as e:
         return f"获取 K 线失败：{e}"

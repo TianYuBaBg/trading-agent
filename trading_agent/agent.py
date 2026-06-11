@@ -297,7 +297,7 @@ def run_trade_cycle():
         if not tool_calls:
             break  # AI 做出最终决策
 
-        # 执行工具
+        # 执行工具（每轮独立执行，结果不回累积）
         had_errors = []
         for tc in tool_calls:
             name = tc.get("name", "")
@@ -307,18 +307,20 @@ def run_trade_cycle():
                 result = _run_tool(name, args, _balance=balance, _positions=positions)
             except Exception as e:
                 result = {"error": f"工具 {name} 执行异常: {e}"}
-            # 交易成功后刷新 balance/positions，避免后续仓位检查用旧数据
-            if isinstance(result, dict) and result.get("status") in ("已开仓", "已平仓"):
+            # 交易或转账成功后刷新 balance/positions，避免后续仓位检查用旧数据
+            need_refresh = False
+            if isinstance(result, dict):
+                if result.get("status") in ("已开仓", "已平仓"):
+                    need_refresh = True
+                elif name == "transfer_spot_to_perp" and result.get("status") == "ok":
+                    need_refresh = True
+            if need_refresh:
                 new_balance = hl_connector.get_balance()
                 new_positions = hl_connector.get_positions()
                 if isinstance(new_balance, dict):
                     balance = new_balance
                 if isinstance(new_positions, list):
                     positions = new_positions
-            elif name == "transfer_spot_to_perp" and isinstance(result, dict) and result.get("status") == "ok":
-                new_balance = hl_connector.get_balance()
-                if isinstance(new_balance, dict):
-                    balance = new_balance
             print(f"  [Agent] 结果: {str(result)[:80]}...")
             all_results.append({"tool": name, "result": result})
             # 检测工具是否返回错误或警告（工具成功时均返回 dict，字符串 = 错误）

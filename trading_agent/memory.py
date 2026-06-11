@@ -163,9 +163,9 @@ def recall(context_text: str, top_k: int = 3):
     # 如果所有 lessons 都没有 embedding（旧数据），按 used_count 升序返回（最少使用的优先）
     has_any_embedding = any(l.get("embedding") for l in lessons)
     if not has_any_embedding:
-        # 按 used_count 升序排序，让最少使用的教训优先被召回
-        sorted_by_usage = sorted(lessons, key=lambda l: l.get("used_count", 0))
-        selected = sorted_by_usage[:top_k]
+        # 使用 heapq.nsmallest 获取 used_count 最小的 top_k 条（性能更好）
+        import heapq
+        selected = heapq.nsmallest(top_k, lessons, key=lambda l: l.get("used_count", 0))
         _increment_used({l.get("id") for l in selected})
         return [
             {"lesson": l["lesson"], "tags": l.get("tags", []), "outcome": l.get("outcome", "")}

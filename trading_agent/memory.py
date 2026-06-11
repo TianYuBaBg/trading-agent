@@ -38,8 +38,9 @@ def _get_model():
             _embedding_model = TextEmbedding("BAAI/bge-small-zh-v1.5")
         except Exception as e:
             print(f"  [记忆] 模型加载失败（不影响核心功能）: {e}")
+            _embedding_model = False
             return None
-    return _embedding_model
+    return _embedding_model if _embedding_model else None
 
 
 def _ensure_file():

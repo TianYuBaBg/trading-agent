@@ -213,6 +213,7 @@ def get_positions():
             positions.append({
                 "coin": p.get("coin", ""),
                 "size": float(szi),
+                "direction": "long" if float(szi) > 0 else "short",
                 "entry_px": float(p.get("entryPx", 0) or 0),
                 "pnl": float(p.get("unrealizedPnl", 0) or 0),
                 "leverage": float(lev or 1),

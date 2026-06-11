@@ -36,7 +36,7 @@ def _get_client():
 
 _TOOL_DESCRIPTIONS = {
     "get_market_overview": "查看所有币种的最新行情（价格、成交量）",
-    "get_orderbook": "查看某个币的买卖盘深度，参数：coin（币种，如 BTC）",
+    "get_orderbook": "查看某个币的买卖盘深度，参数：coin（币种，如 BTC），depth（深度档位，默认5）",
     "get_candles": "查看某个币的K线趋势，参数：coin（币种），interval（间隔：1m/5m/15m/1h/4h/1d，默认1h），hours（往回看几小时，默认24）",
     "get_positions": "查看当前持仓及盈亏",
     "get_balance": "查看账户总资产和可用余额",
@@ -104,7 +104,7 @@ def _run_tool(name: str, args: dict):
     if name == "get_market_overview":
         return hl_connector.get_market_overview()
     elif name == "get_orderbook":
-        return hl_connector.get_orderbook(args.get("coin", "BTC"))
+        return hl_connector.get_orderbook(args.get("coin", "BTC"), int(args.get("depth") or 5))
     elif name == "get_candles":
         return hl_connector.get_candles(args.get("coin", "BTC"), (args.get("interval") or "1h").lower(), int(args.get("hours") or 24))
     elif name == "get_positions":

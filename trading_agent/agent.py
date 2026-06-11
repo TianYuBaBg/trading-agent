@@ -226,7 +226,10 @@ def run_trade_cycle():
             name = tc.get("name", "")
             args = tc.get("args", {})
             print(f"  [Agent] 调工具: {name}({args})")
-            result = _run_tool(name, args)
+            try:
+                result = _run_tool(name, args)
+            except Exception as e:
+                result = {"error": f"工具 {name} 执行异常: {e}"}
             print(f"  [Agent] 结果: {str(result)[:80]}...")
             all_results.append({"tool": name, "result": result})
             # 检测工具是否返回错误

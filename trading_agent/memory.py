@@ -66,9 +66,13 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     with open(_LESSONS_FILE, encoding="utf-8") as f:
         lessons = json.load(f)
 
+    lesson_text = lesson_text.strip()
+    if len(lesson_text) < 5:
+        return None
+
     # 去重：去除非文字符号后前 25 字相同，或包含关系
     _punc = re.compile(r"\W+")
-    clean = _punc.sub("", lesson_text.strip())[:25]
+    clean = _punc.sub("", lesson_text)[:25]
     for existing in lessons:
         existing_text = existing.get("lesson", "")
         existing_clean = _punc.sub("", existing_text)[:25]

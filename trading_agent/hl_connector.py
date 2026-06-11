@@ -255,6 +255,15 @@ def get_balance():
 
 # ========== 交易工具 ==========
 
+def _get_fill_price(statuses: list, fallback: float) -> float:
+    """从 SDK 响应 statuses 中提取实际成交均价 (avgPx)"""
+    if statuses:
+        fill = statuses[0].get("filled", {})
+        if fill and fill.get("avgPx"):
+            return float(fill["avgPx"])
+    return fallback
+
+
 def _get_sz_decimals(coin: str) -> int:
     """获取币种的数量精度（szDecimals），结果缓存"""
     global _sz_decimals_cache
@@ -335,9 +344,7 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1):
             if "resting" in first:
                 return f"开仓未成交：订单未立即成交（挂单中）"
             # 提取实际成交均价（avgPx），比 all_mids 更精确
-            fill = first.get("filled", {})
-            if fill:
-                current_price = float(fill.get("avgPx", current_price))
+            current_price = _get_fill_price(statuses, current_price)
 
         trade_record = {
             "coin": coin,
@@ -392,9 +399,7 @@ def close_trade(coin: str, size: float = None):
             if "resting" in first:
                 return f"平仓未成交：订单未立即成交（挂单中）"
             # 提取实际成交价（avgPx），比 all_mids 的中间价更精确
-            fill = first.get("filled", {})
-            if fill:
-                current_price = float(fill.get("avgPx", current_price))
+            current_price = _get_fill_price(statuses, current_price)
 
         # 计算盈亏
         pnl = (current_price - pos["entry_px"]) * close_sz

@@ -129,8 +129,8 @@ def get_market_overview():
             # 补充成交量和资金费率
             ctx = coin_to_ctx.get(coin)
             if ctx:
-                item["volume"] = float(ctx.get("dayNtlVlm", 0))
-                item["funding"] = float(ctx.get("funding", 0))
+                item["volume"] = float(ctx.get("dayNtlVlm") or 0)
+                item["funding"] = float(ctx.get("funding") or 0)
             overview.append(item)
         # 按成交量降序排列，流动性高的币种在前
         overview.sort(key=lambda x: x.get("volume", 0), reverse=True)

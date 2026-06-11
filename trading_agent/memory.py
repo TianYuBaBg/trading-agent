@@ -178,6 +178,8 @@ def recall(context_text: str, top_k: int = 3):
 
     # 向量搜索失败 → 关键词匹配降级（搜索标签 + 正文）
     keywords = set(context_text.lower().split())
+    # 中文语境下 split() 效果很差（中文无空格），用字符重叠作为补充
+    ctx_chinese = set(re.findall(r'[一-鿿]', context_text.lower()))
     scored = []
     for l in lessons:
         score = 0
@@ -188,6 +190,11 @@ def recall(context_text: str, top_k: int = 3):
         for kw in keywords:
             if kw in lesson_lower:
                 score += 1
+        # 中文字符重叠度：降级搜索的关键补充
+        if ctx_chinese:
+            lesson_cjk = set(re.findall(r'[一-鿿]', lesson_lower))
+            overlap = len(ctx_chinese & lesson_cjk) / max(len(ctx_chinese), 1)
+            score += overlap * 5
         scored.append((score, l))
     scored.sort(key=lambda x: -x[0])
     return [

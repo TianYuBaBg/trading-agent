@@ -172,6 +172,8 @@ def get_candles(coin: str, interval: str = "1h", hours: int = 24):
         now_ms = int(time.time() * 1000)
         start_ms = now_ms - hours * 3600 * 1000
         raw = info.candles_snapshot(coin, interval, start_ms, now_ms)
+        if not raw:
+            return []
         candles = []
         for c in raw:
             candles.append({

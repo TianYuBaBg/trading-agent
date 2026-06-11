@@ -88,7 +88,8 @@ def _increment_used(ids_to_inc, lessons=None):
     if lessons is None:
         lessons = _load_lessons()
     for l in lessons:
-        if l.get("id") in ids_to_inc:
+        lid = l.get("id")
+        if lid is not None and lid in ids_to_inc:
             l["used_count"] = (l.get("used_count") or 0) + 1
     with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
         json.dump(lessons, f, ensure_ascii=False, indent=2)

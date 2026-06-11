@@ -343,7 +343,12 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
         sz_decimals = _get_sz_decimals(coin)
         coin_size = round(size / current_price, sz_decimals)
 
-        # 先检查总仓位限制（用 AI 请求的 size，避免 min_sz 膨胀导致误杀）
+        # 确保最小名义价值 >= $10（Hyperliquid 要求）
+        min_sz = math.ceil(10.0 / current_price * (10 ** sz_decimals)) / (10 ** sz_decimals)
+        if coin_size < min_sz:
+            coin_size = min_sz
+
+        # 检查总仓位限制（用实际开仓额，避免 min_sz 膨胀后实际超限）
         try:
             if _balance is not None and isinstance(_balance, dict):
                 total_value = _balance.get("wallet_value", 0)
@@ -363,19 +368,14 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
                     if float(coin_price) <= 0:
                         continue
                     existing_notional += abs(p["size"]) * float(coin_price)
-            new_notional = size  # 用 AI 请求的 USD 金额，而非膨胀后的币数*价格
-            total_notional = existing_notional + new_notional
+            actual_new = coin_size * current_price
+            total_notional = existing_notional + actual_new
             max_allowed = total_value * (config.MAX_POSITION_SIZE_PCT / 100)
             if total_notional > max_allowed:
-                max_add = max(0, max_allowed - existing_notional)
-                return f"开仓失败：已有 ${existing_notional:.1f} + 新开 ${new_notional:.1f} = ${total_notional:.1f} 超过限额 ${max_allowed:.1f}（{config.MAX_POSITION_SIZE_PCT}%），最多还能开 ${max_add:.1f}"
+                min_add_info = f"，最小开仓额 $10 已将请求的 ${size:.1f} 提升至 ${actual_new:.1f}" if actual_new > size else ""
+                return f"开仓失败：已有 ${existing_notional:.1f} + 实际开仓 ${actual_new:.1f} = ${total_notional:.1f} 超过限额 ${max_allowed:.1f}（{config.MAX_POSITION_SIZE_PCT}%）{min_add_info}，最多还能开 ${max(0, max_allowed - existing_notional):.1f}"
         except Exception as e:
             return f"开仓失败：仓位限制检查异常（{e}），为安全起见拒绝开仓"
-
-        # 确保最小名义价值 >= $10（Hyperliquid 要求，仓位检查通过后再执行）
-        min_sz = math.ceil(10.0 / current_price * (10 ** sz_decimals)) / (10 ** sz_decimals)
-        if coin_size < min_sz:
-            coin_size = min_sz
 
         # 所有校验通过后再设置杠杆（避免 size 非法时杠杆被误设）
         # 检查当前杠杆是否已设好，避免不必要的链上交易

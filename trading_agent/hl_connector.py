@@ -343,12 +343,7 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
         sz_decimals = _get_sz_decimals(coin)
         coin_size = round(size / current_price, sz_decimals)
 
-        # 确保最小名义价值 >= $10（Hyperliquid 要求，向上取整）
-        min_sz = math.ceil(10.0 / current_price * (10 ** sz_decimals)) / (10 ** sz_decimals)
-        if coin_size < min_sz:
-            coin_size = min_sz
-
-        # 检查总仓位是否超过限制（优先使用调用方传入的数据，避免重复 RPC）
+        # 先检查总仓位限制（用 AI 请求的 size，避免 min_sz 膨胀导致误杀）
         try:
             if _balance is not None and isinstance(_balance, dict):
                 total_value = _balance.get("wallet_value", 0)
@@ -362,22 +357,25 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
             existing_notional = 0
             if isinstance(pos_list, list):
                 for p in pos_list:
-                    # 获取持仓币种的价格：优先用当前市价，否则用开仓价
                     coin_price = mids.get(p["coin"])
                     if coin_price is None or float(coin_price) == 0:
                         coin_price = p.get("entry_px", 0)
-                    # 如果价格仍无效（为 0），跳过该持仓（避免计算错误）
                     if float(coin_price) <= 0:
                         continue
                     existing_notional += abs(p["size"]) * float(coin_price)
-            new_notional = coin_size * current_price
+            new_notional = size  # 用 AI 请求的 USD 金额，而非膨胀后的币数*价格
             total_notional = existing_notional + new_notional
             max_allowed = total_value * (config.MAX_POSITION_SIZE_PCT / 100)
             if total_notional > max_allowed:
                 max_add = max(0, max_allowed - existing_notional)
-                return f"开仓失败：总仓位 ${total_notional:.1f} 超过限制 ${max_allowed:.1f}（{config.MAX_POSITION_SIZE_PCT}%），最多还能开 ${max_add:.1f}"
+                return f"开仓失败：已有 ${existing_notional:.1f} + 新开 ${new_notional:.1f} = ${total_notional:.1f} 超过限额 ${max_allowed:.1f}（{config.MAX_POSITION_SIZE_PCT}%），最多还能开 ${max_add:.1f}"
         except Exception as e:
             return f"开仓失败：仓位限制检查异常（{e}），为安全起见拒绝开仓"
+
+        # 确保最小名义价值 >= $10（Hyperliquid 要求，仓位检查通过后再执行）
+        min_sz = math.ceil(10.0 / current_price * (10 ** sz_decimals)) / (10 ** sz_decimals)
+        if coin_size < min_sz:
+            coin_size = min_sz
 
         # 所有校验通过后再设置杠杆（避免 size 非法时杠杆被误设）
         # 检查当前杠杆是否已设好，避免不必要的链上交易

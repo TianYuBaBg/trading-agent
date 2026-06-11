@@ -323,8 +323,6 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
             return f"开仓失败：杠杆必须为正整数，收到 {leverage}"
         if leverage > config.MAX_LEVERAGE:
             return f"开仓失败：杠杆 {leverage}x 超过上限 {config.MAX_LEVERAGE}x"
-        # 设置杠杆
-        ex.update_leverage(leverage, coin, True)
 
         # 获取当前市价
         info = _ensure_info()
@@ -368,6 +366,9 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
                 return f"开仓失败：总仓位 ${total_notional:.1f} 超过限制 ${max_allowed:.1f}（{config.MAX_POSITION_SIZE_PCT}%），最多还能开 ${max_add:.1f}"
         except Exception as e:
             return f"开仓失败：仓位限制检查异常（{e}），为安全起见拒绝开仓"
+
+        # 所有校验通过后再设置杠杆（避免 size 非法时杠杆被误设）
+        ex.update_leverage(leverage, coin, True)
 
         is_buy = side == "long"
 

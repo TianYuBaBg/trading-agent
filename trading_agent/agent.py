@@ -270,6 +270,8 @@ def run_trade_cycle():
                 temperature=0.7,
                 response_format={"type": "json_object"},
             )
+            if not resp.choices:
+                raise ValueError("AI 返回空响应（choices 为空）")
             decision = _extract_json(resp.choices[0].message.content)
             if "error" in decision:
                 raise ValueError(decision["error"])
@@ -371,6 +373,9 @@ def run_review():
             ],
             temperature=0.7,
         )
+        if not response.choices:
+            print("  复盘 AI 分析：返回空响应，跳过")
+            return review_data
         analysis = response.choices[0].message.content
         print(f"\n  AI 分析：\n  {analysis}")
 

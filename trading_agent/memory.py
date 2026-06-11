@@ -90,12 +90,12 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     if isinstance(tags, str):
         tags = [t.strip() for t in tags.split(",") if t.strip()]
 
-    # 去重：去除非文字符号后前 50 字相同则视为重复（避免前25字相同但意思不同的教训被误杀）
-    clean = _PUNC_RE.sub("", lesson_text)[:50]
-    if len(clean) >= 20:
+    # 去重：完整文本前 80 字符相同才视为重复（避免开头相似但结论不同的教训被误杀）
+    clean = lesson_text.strip()[:80]
+    if len(clean) >= 30:
         for existing in lessons:
             existing_text = existing.get("lesson", "")
-            if _PUNC_RE.sub("", existing_text)[:50] == clean:
+            if existing_text.strip()[:80] == clean:
                 return existing
 
     # 生成向量

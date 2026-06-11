@@ -416,7 +416,9 @@ def close_trade(coin: str, size: float = None):
         mids = info.all_mids()
         current_price = float(mids.get(coin, 0))
 
-        close_sz = abs(pos["size"]) if size is None else size
+        close_sz = abs(pos["size"]) if size is None else abs(float(size))
+        if close_sz <= 0:
+            return "平仓失败：平仓数量必须大于 0"
         result = ex.market_close(coin, close_sz, current_price, slippage=0.01)
 
         # 检查平仓订单状态

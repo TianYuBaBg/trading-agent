@@ -193,10 +193,16 @@ def run_trade_cycle():
     positions = hl_connector.get_positions()
     overview = hl_connector.get_market_overview()
 
-    # ---- 风控：每日亏损限制 ----
+    # ---- 数据质量检查 ----
     if isinstance(balance, str):
-        print(f"  [风控] 获取余额失败，跳过交易周期（{balance}）")
+        print(f"  [Agent] 获取余额失败，跳过交易周期（{balance}）")
         return {"error": f"获取余额失败：{balance}", "state": ""}
+    if isinstance(positions, str):
+        print(f"  [Agent] 获取持仓失败，跳过交易周期（{positions}）")
+        return {"error": f"获取持仓失败：{positions}", "state": ""}
+    if isinstance(overview, str):
+        print(f"  [Agent] 获取行情失败，跳过交易周期（{overview}）")
+        return {"error": f"获取行情失败：{overview}", "state": ""}
     if config.DAILY_LOSS_LIMIT_PCT <= 0:
         wallet_value = balance.get("wallet_value", 0)
         if wallet_value > 0:

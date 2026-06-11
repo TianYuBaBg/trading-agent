@@ -319,8 +319,8 @@ def run_trade_cycle():
             messages.append({"role": "user", "content": f"调用出错: {e}，请重新尝试"})
             continue
 
-        final_thought = decision.get("thought", "")
-        final_reply = decision.get("reply", "")
+        final_thought = decision.get("thought") or ""
+        final_reply = decision.get("reply") or ""
         need_review = decision.get("need_review", False) or need_review
         lesson_to_save = decision.get("lesson_to_save") or ""
 
@@ -481,7 +481,7 @@ def run_review():
         lessons_list = lesson_data.get("lessons") or []
         if isinstance(lessons_list, list):
             for l in lessons_list:
-                text = l.get("text", "")
+                text = (l.get("text") or "")
                 if text:
                     tags = l.get("tags") or []
                     if isinstance(tags, str):

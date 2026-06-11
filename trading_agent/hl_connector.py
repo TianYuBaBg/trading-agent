@@ -379,6 +379,7 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
 
         # 所有校验通过后再设置杠杆（避免 size 非法时杠杆被误设）
         # 检查当前杠杆是否已设好，避免不必要的链上交易
+        is_buy = side == "long"
         _need_leverage_update = True
         if isinstance(_positions, list):
             for _p in _positions:
@@ -386,9 +387,7 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
                     _need_leverage_update = False
                     break
         if _need_leverage_update:
-            ex.update_leverage(leverage, coin, True)
-
-        is_buy = side == "long"
+            ex.update_leverage(leverage, coin, is_buy)
 
         # 市价单（IOC = Immediate-or-Cancel，市价吃单）
         result = ex.market_open(coin, is_buy, coin_size, current_price, slippage=0.01)

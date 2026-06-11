@@ -164,14 +164,16 @@ def recall(context_text: str, top_k: int = 3):
     if not lessons:
         return []
 
-    # 如果所有 lessons 都没有 embedding（旧数据），返回最近几条
+    # 如果所有 lessons 都没有 embedding（旧数据），按 used_count 升序返回（最少使用的优先）
     has_any_embedding = any(l.get("embedding") for l in lessons)
     if not has_any_embedding:
-        recent = lessons[-top_k:]
-        _increment_used({l.get("id") for l in recent})
+        # 按 used_count 升序排序，让最少使用的教训优先被召回
+        sorted_by_usage = sorted(lessons, key=lambda l: l.get("used_count", 0))
+        selected = sorted_by_usage[:top_k]
+        _increment_used({l.get("id") for l in selected})
         return [
             {"lesson": l["lesson"], "tags": l.get("tags", []), "outcome": l.get("outcome", "")}
-            for l in recent
+            for l in selected
         ]
 
     # 给 context 生成向量

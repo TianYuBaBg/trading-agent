@@ -210,7 +210,8 @@ def run_trade_cycle():
     if isinstance(overview, str):
         print(f"  [Agent] 获取行情失败，跳过交易周期（{overview}）")
         return {"error": f"获取行情失败：{overview}", "state": ""}
-    if config.DAILY_LOSS_LIMIT_PCT <= 0:
+    # 风控检查：DAILY_LOSS_LIMIT_PCT < 0 表示启用风控（-5 表示日亏 5% 停止）
+    if config.DAILY_LOSS_LIMIT_PCT < 0:
         wallet_value = balance.get("wallet_value", 0)
         if wallet_value > 0:
             recent_trades = hl_connector.get_trade_history(days=1)
@@ -320,11 +321,15 @@ def run_trade_cycle():
                     balance = new_balance
             print(f"  [Agent] 结果: {str(result)[:80]}...")
             all_results.append({"tool": name, "result": result})
-            # 检测工具是否返回错误（工具成功时均返回 dict，字符串 = 错误）
+            # 检测工具是否返回错误或警告（工具成功时均返回 dict，字符串 = 错误）
             if isinstance(result, str):
                 had_errors.append(f"{name}: {result[:100]}")
-            elif isinstance(result, dict) and result.get("error"):
-                had_errors.append(f"{name}: {result['error'][:100]}")
+            elif isinstance(result, dict):
+                if result.get("error"):
+                    had_errors.append(f"{name}: {result['error'][:100]}")
+                elif result.get("warning"):
+                    # 警告也反馈给 AI，让其知道操作被跳过
+                    had_errors.append(f"{name} 警告: {result['warning'][:100]}")
 
         # 把所有工具结果送回 AI 继续分析
         messages.append({"role": "assistant", "content": json.dumps(decision, ensure_ascii=False)})

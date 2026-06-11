@@ -251,8 +251,8 @@ def get_balance():
     try:
         state = info.user_state(addr)
         cross = state.get("crossMarginSummary", {})
-        perp_value = float(cross.get("accountValue", 0))
-        margin_used = float(cross.get("totalMarginUsed", 0))
+        perp_value = float(cross.get("accountValue") or 0)
+        margin_used = float(cross.get("totalMarginUsed") or 0)
 
         # 也查 Spot 余额
         spot_value = 0.0
@@ -260,7 +260,7 @@ def get_balance():
             spot_state = info.spot_user_state(addr)
             for b in spot_state.get("balances", []):
                 if b.get("coin") == "USDC":
-                    spot_value = float(b.get("total", 0))
+                    spot_value = float(b.get("total") or 0)
                     break
         except Exception:
             pass
@@ -432,6 +432,8 @@ def close_trade(coin: str, size: float = None, _positions=None):
 
         mids = info.all_mids()
         current_price = float(mids.get(coin, 0))
+        if current_price == 0:
+            return f"无法获取 {coin} 价格"
 
         close_sz = abs(pos["size"]) if size is None else abs(float(size))
         if close_sz <= 0:

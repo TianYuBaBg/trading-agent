@@ -116,16 +116,17 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     if len(lesson_text) < 5:
         return None
 
-    # 归一化 tags：允许字符串传入，强制转为字符串列表
+    # 归一化 tags：允许字符串传入，强制转为字符串列表（小写 + 去重）
     if isinstance(tags, str):
-        tags = [t.strip() for t in tags.split(",") if t.strip()]
+        tags = [t.strip().lower() for t in tags.split(",") if t.strip()]
     elif tags is None:
         tags = []
     else:
-        tags = [str(t).strip() for t in tags if str(t).strip()]
+        tags = [str(t).strip().lower() for t in tags if str(t).strip()]
+    tags = list(set(tags))
 
     # 去重：完整文本相同才视为重复（严格匹配，避免误杀相似但不同的教训）
-    clean = lesson_text.strip()
+    clean = lesson_text
     for existing in lessons:
         if clean == existing.get("lesson", "").strip():
             return existing

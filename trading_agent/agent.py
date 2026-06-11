@@ -403,16 +403,18 @@ def run_review():
         print("  没有近期交易")
         return
 
-    total_pnl = sum(t.get("pnl") or 0 for t in trades)
-    win_trades = [t for t in trades if (t.get("pnl") or 0) > 0]
-    loss_trades = [t for t in trades if (t.get("pnl") or 0) < 0]
+    # 过滤开仓成交（closedPnl=0），只保留已平仓成交用于计算胜率
+    closed = [t for t in trades if t.get("pnl") != 0]
+    total_pnl = sum(t.get("pnl") or 0 for t in closed)
+    win_trades = [t for t in closed if (t.get("pnl") or 0) > 0]
+    loss_trades = [t for t in closed if (t.get("pnl") or 0) < 0]
 
     review_data = {
-        "total_trades": len(trades),
+        "total_trades": len(closed),
         "total_pnl": total_pnl,
         "win_count": len(win_trades),
         "loss_count": len(loss_trades),
-        "win_rate": round(len(win_trades) / max(len(trades), 1) * 100, 1),
+        "win_rate": round(len(win_trades) / max(len(closed), 1) * 100, 1),
     }
 
     print(f"  交易次数: {review_data['total_trades']}")

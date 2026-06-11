@@ -159,7 +159,7 @@ def _run_tool(name: str, args: dict):
 # ========== JSON 提取工具 ==========
 
 def _extract_json(text: str) -> dict:
-    """从 AI 回复中提取 JSON 对象"""
+    """从 AI 回复中提取 JSON 对象，解析失败时返回 error dict"""
     clean = text.strip()
     if clean.startswith("```"):
         clean = clean.split("\n", 1)[-1]
@@ -168,7 +168,10 @@ def _extract_json(text: str) -> dict:
     brace_end = clean.rfind("}")
     if brace_start >= 0 and brace_end > brace_start:
         clean = clean[brace_start:brace_end + 1]
-    return json.loads(clean)
+    try:
+        return json.loads(clean)
+    except json.JSONDecodeError as e:
+        return {"error": f"JSON 解析失败: {e}", "_raw": text[:200]}
 
 
 # ========== 单次交易决策循环（ReAct） ==========
@@ -256,10 +259,12 @@ def run_trade_cycle():
                 response_format={"type": "json_object"},
             )
             decision = _extract_json(resp.choices[0].message.content)
+            if "error" in decision:
+                raise ValueError(decision["error"])
         except Exception as e:
             if _round >= max_rounds - 1:
                 return {"error": f"AI 决策失败: {e}", "state": state_text}
-            messages.append({"role": "user", "content": f"JSON 解析错误: {e}，请重新输出有效的 JSON 对象"})
+            messages.append({"role": "user", "content": f"输出格式错误: {e}，请重新输出有效的 JSON 对象"})
             continue
 
         final_thought = decision.get("thought", "")

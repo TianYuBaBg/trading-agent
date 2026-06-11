@@ -191,6 +191,25 @@ def run_trade_cycle():
     positions = hl_connector.get_positions()
     overview = hl_connector.get_market_overview()
 
+    # ---- 风控：每日亏损限制 ----
+    if config.DAILY_LOSS_LIMIT_PCT < 0 and isinstance(balance, dict):
+        wallet_value = balance.get("wallet_value", 0)
+        if wallet_value > 0:
+            recent_trades = hl_connector.get_trade_history(days=1)
+            if isinstance(recent_trades, list) and recent_trades:
+                today_pnl = sum(t.get("pnl", 0) for t in recent_trades if t.get("pnl"))
+                loss_limit = wallet_value * abs(config.DAILY_LOSS_LIMIT_PCT) / 100
+                if today_pnl < -loss_limit:
+                    msg = f"今日亏损 ${today_pnl:.2f} 超过限制 ${-loss_limit:.2f}（{config.DAILY_LOSS_LIMIT_PCT}%），停止交易"
+                    print(f"  [风控] {msg}")
+                    return {
+                        "thought": msg,
+                        "reply": msg,
+                        "need_review": True,
+                        "tool_results": [],
+                        "state": f"余额：{json.dumps(balance, ensure_ascii=False)}\n今日盈亏：{today_pnl:.2f}",
+                    }
+
     state_text = f"""
 当前账户：{json.dumps(balance, ensure_ascii=False)}
 当前持仓：{json.dumps(positions, ensure_ascii=False)}

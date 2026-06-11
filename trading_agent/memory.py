@@ -98,9 +98,13 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     if len(lesson_text) < 5:
         return None
 
-    # 归一化 tags：允许字符串传入
+    # 归一化 tags：允许字符串传入，强制转为字符串列表
     if isinstance(tags, str):
         tags = [t.strip() for t in tags.split(",") if t.strip()]
+    elif tags is None:
+        tags = []
+    else:
+        tags = [str(t).strip() for t in tags if str(t).strip()]
 
     # 去重：完整文本前 80 字符相同才视为重复（避免开头相似但结论不同的教训被误杀）
     clean = lesson_text.strip()[:80]
@@ -143,11 +147,12 @@ def recall(context_text: str, top_k: int = 3):
     """
     搜索与当前场景最相关的历史教训
     context_text: 当前市场情况的描述
-    top_k: 返回前几条
+    top_k: 返回前几条（限制在 1~20）
     返回：最相关的教训列表，每条包含 lesson, tags, outcome
     """
     _ensure_file()
     context_text = context_text or ""
+    top_k = max(1, min(int(top_k), 20))
     with open(_LESSONS_FILE, encoding="utf-8") as f:
         lessons = json.load(f)
 

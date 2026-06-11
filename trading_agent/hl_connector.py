@@ -439,6 +439,10 @@ def close_trade(coin: str, size: float = None, _positions=None):
         close_sz = abs(pos["size"]) if size is None else abs(float(size))
         if close_sz <= 0:
             return "平仓失败：平仓数量必须大于 0"
+        # 禁止平仓超过实际持仓数量
+        max_sz = abs(pos["size"])
+        if close_sz > max_sz:
+            close_sz = max_sz
         result = ex.market_close(coin, close_sz, current_price, slippage=0.01)
 
         # 检查平仓订单状态

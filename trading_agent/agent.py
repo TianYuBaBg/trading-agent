@@ -146,7 +146,10 @@ def _run_tool(name: str, args: dict):
         lesson = args.get("lesson")
         if not lesson:
             return {"error": "记录教训失败：缺少必填参数 lesson"}
-        return memory.add_lesson(lesson, args.get("tags", []), args.get("outcome", ""))
+        tags = args.get("tags", [])
+        if isinstance(tags, str):
+            tags = [t.strip() for t in tags.split(",") if t.strip()]
+        return memory.add_lesson(lesson, tags, args.get("outcome", ""))
     elif name == "transfer_spot_to_perp":
         return hl_connector.transfer_spot_to_perp(float(args.get("amount", 0)))
     return {"error": f"未知工具: {name}"}
@@ -329,7 +332,12 @@ def run_review():
         )
         lesson_data = json.loads(lesson_response.choices[0].message.content)
         for l in lesson_data.get("lessons", []):
-            memory.add_lesson(l["text"], l.get("tags", []))
+            text = l.get("text", "")
+            if text:
+                tags = l.get("tags", [])
+                if isinstance(tags, str):
+                    tags = [t.strip() for t in tags.split(",") if t.strip()]
+                memory.add_lesson(text, tags, l.get("outcome", ""))
 
     except Exception as e:
         print(f"  复盘 AI 分析失败: {e}")

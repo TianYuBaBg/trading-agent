@@ -357,15 +357,14 @@ def run_trade_cycle():
                     positions = new_positions
             print(f"  [Agent] 结果: {str(result)[:80]}...")
             all_results.append({"tool": name, "result": result})
-            # 检测工具是否返回错误或警告（工具成功时均返回 dict，字符串 = 错误）
+            # 检测工具是否返回错误或警告
             if isinstance(result, str):
-                had_errors.append(f"{name}: {result[:100]}")
+                had_errors.append(f"{name}: {result}")
             elif isinstance(result, dict):
                 if result.get("error"):
-                    had_errors.append(f"{name}: {result['error'][:100]}")
+                    had_errors.append(f"{name}: {result['error']}")
                 elif result.get("warning"):
-                    # 警告也反馈给 AI，让其知道操作被跳过
-                    had_errors.append(f"{name} 警告: {result['warning'][:100]}")
+                    had_errors.append(f"{name} 警告: {result['warning']}")
 
         # 把所有工具结果送回 AI 继续分析
         messages.append({"role": "assistant", "content": json.dumps(decision, ensure_ascii=False)})
@@ -377,7 +376,7 @@ def run_trade_cycle():
         all_results_str = json.dumps(ordered, ensure_ascii=False)[:8000]
         feedback = f"## 工具返回结果\n{all_results_str}\n"
         if had_errors:
-            feedback += "\n⚠️ 注意：以上工具有失败的情况，请仔细检查失败原因，不要假设操作已成功执行。\n"
+            feedback += "\n⚠️ 以下工具调用失败，请仔细检查，不要假设操作已成功：\n" + "\n".join(had_errors) + "\n"
         feedback += "\n## 根据以上数据做最终决策。开仓用 open_trade，平仓用 close_trade，不交易则 tool_calls 留空。"
         messages.append({"role": "user", "content": feedback})
 

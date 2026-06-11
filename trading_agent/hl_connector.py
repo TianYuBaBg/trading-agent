@@ -294,19 +294,17 @@ def _get_fill_price(statuses: list, fallback: float) -> float:
 
 
 def _get_sz_decimals(coin: str) -> int:
-    """获取币种的数量精度（szDecimals），结果缓存"""
+    """获取币种的数量精度（szDecimals），结果缓存（一次 meta() 缓存所有币种）"""
     global _sz_decimals_cache
     if coin in _sz_decimals_cache:
         return _sz_decimals_cache[coin]
     info = _ensure_info()
     try:
         meta = info.meta()
+        # 一次遍历缓存所有币种的 szDecimals，避免每个新币种都调一次 meta()
         for asset in meta.get("universe", []):
-            if asset["name"] == coin:
-                _sz_decimals_cache[coin] = asset["szDecimals"]
-                return asset["szDecimals"]
-        _sz_decimals_cache[coin] = 4
-        return 4
+            _sz_decimals_cache[asset["name"]] = asset["szDecimals"]
+        return _sz_decimals_cache.get(coin, 4)
     except Exception:
         return 4
 

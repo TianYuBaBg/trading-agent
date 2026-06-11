@@ -59,11 +59,10 @@ def _build_system_prompt():
 3. 每日亏损超过 {config.DAILY_LOSS_LIMIT_PCT}% 时停止交易
 4. 每次开仓前先回想相关教训
 5. 平仓后复盘并记录教训
-6. 开仓前如果 Perp 余额不足，先用 transfer_spot_to_perp 把 USDC 从 Spot 转到 Perp
+6. 开仓前计算可开金额：wallet_value * {config.MAX_POSITION_SIZE_PCT}% - 已有持仓名义价值，选择在此范围内的金额
 7. **核心目标：盈利。积极寻找交易机会，小仓位试单、发现趋势加仓**
 8. 小账户可用高杠杆（3x）提高资金利用率，每笔赚 2-5% 就很好
 9. 不要只会等待，没有明确风险信号就该尝试入场
-10. 亏损不可怕，可怕的是不行动。小亏止损，大赚持有
 
 ## 可用工具
 {json.dumps(_TOOL_DESCRIPTIONS, ensure_ascii=False, indent=2)}

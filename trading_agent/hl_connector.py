@@ -332,8 +332,8 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1):
             if total_notional > max_allowed:
                 max_add = max(0, max_allowed - existing_notional)
                 return f"开仓失败：总仓位 ${total_notional:.1f} 超过限制 ${max_allowed:.1f}（{config.MAX_POSITION_SIZE_PCT}%），最多还能开 ${max_add:.1f}"
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  [仓位检查] 跳过仓位限制检查（异常: {e}）")
 
         is_buy = side == "long"
 

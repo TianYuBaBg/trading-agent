@@ -115,10 +115,12 @@ def _run_tool(name: str, args: dict):
     elif name == "open_trade":
         # 检查必填参数
         coin = args.get("coin")
-        side = args.get("side")
+        side = (args.get("side") or "").lower()
         size = args.get("size")
         if not coin or not side or not size:
             return {"error": "开仓失败：缺少必填参数 coin/side/size"}
+        if side not in ("long", "short"):
+            return {"error": f"开仓失败：side 必须为 long 或 short，收到: {side}"}
         # 检查币种白名单
         if config.ALLOWED_COINS and coin not in config.ALLOWED_COINS:
             return {"error": f"{coin} 不在允许交易列表(ALLOWED_COINS)中"}

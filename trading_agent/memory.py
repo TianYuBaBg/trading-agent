@@ -112,6 +112,8 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     with open(_LESSONS_FILE, encoding="utf-8") as f:
         lessons = json.load(f)
 
+    if not isinstance(lesson_text, str):
+        return None
     lesson_text = lesson_text.strip()
     if len(lesson_text) < 5:
         return None

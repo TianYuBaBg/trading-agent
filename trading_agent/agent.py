@@ -146,8 +146,8 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
         return memory.recall(args.get("context", ""), int(args.get("top_k") or 3))
     elif name == "add_lesson":
         lesson = args.get("lesson")
-        if not lesson:
-            return {"error": "记录教训失败：缺少必填参数 lesson"}
+        if not lesson or not isinstance(lesson, str):
+            return {"error": "记录教训失败：缺少必填参数 lesson 或类型错误（需要字符串）"}
         tags = args.get("tags", [])
         if isinstance(tags, str):
             tags = [t.strip() for t in tags.split(",") if t.strip()]

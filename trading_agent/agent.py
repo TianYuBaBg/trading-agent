@@ -151,7 +151,10 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
         tags = args.get("tags", [])
         if isinstance(tags, str):
             tags = [t.strip() for t in tags.split(",") if t.strip()]
-        return memory.add_lesson(lesson, tags, args.get("outcome", ""))
+        result = memory.add_lesson(lesson, tags, args.get("outcome", ""))
+        if result is None:
+            return {"status": "未保存", "reason": "教训内容过短（少于5字符）或重复"}
+        return {"status": "已保存", "lesson": result}
     elif name == "transfer_spot_to_perp":
         amount = float(args.get("amount") or 0)
         if amount <= 0:

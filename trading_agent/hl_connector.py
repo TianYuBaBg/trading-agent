@@ -378,6 +378,8 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
 
         # 市价单（IOC = Immediate-or-Cancel，市价吃单）
         result = ex.market_open(coin, is_buy, coin_size, current_price, slippage=0.01)
+        if not result:
+            return "开仓失败：订单返回空结果"
 
         # 检查订单状态
         statuses = result.get("response", {}).get("data", {}).get("statuses", [])
@@ -448,6 +450,8 @@ def close_trade(coin: str, size: float = None, _positions=None):
         if close_sz > max_sz:
             close_sz = max_sz
         result = ex.market_close(coin, close_sz, current_price, slippage=0.01)
+        if not result:
+            return "平仓失败：订单返回空结果"
 
         # 检查平仓订单状态
         statuses = result.get("response", {}).get("data", {}).get("statuses", [])
@@ -541,16 +545,29 @@ def get_trade_history(days: int = 7):
         cutoff = int(time.time() * 1000) - days * 86400 * 1000
         recent = []
         for f in fills:
-            if f["time"] < cutoff:
+            # 跳过关键字段缺失或无效的成交记录，避免单条坏数据炸掉整个函数
+            fill_time = f.get("time")
+            if not fill_time or fill_time < cutoff:
+                continue
+            px = f.get("px")
+            sz = f.get("sz")
+            if px is None or sz is None:
+                continue
+            try:
+                price = float(px)
+                size = float(sz)
+            except (TypeError, ValueError):
+                continue
+            if price <= 0 or size <= 0:
                 continue
             recent.append({
-                "coin": f["coin"],
-                "side": "long" if f["side"] == "B" else "short",
-                "price": float(f["px"]),
-                "size": float(f["sz"]),
+                "coin": f.get("coin", ""),
+                "side": "long" if f.get("side") == "B" else "short",
+                "price": price,
+                "size": size,
                 "pnl": float(f.get("closedPnl") or 0),
                 "dir": f.get("dir", ""),
-                "time": time.strftime("%m-%d %H:%M", time.localtime(f["time"] / 1000)),
+                "time": time.strftime("%m-%d %H:%M", time.localtime(fill_time / 1000)),
             })
         return recent
     except Exception as e:

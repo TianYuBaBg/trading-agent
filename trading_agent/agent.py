@@ -100,14 +100,13 @@ def _reset_executed_ops():
 
 def _run_tool(name: str, args: dict):
     """执行一个工具调用并返回原始 Python 对象（非 JSON 字符串）"""
-    global _executed_ops
 
     if name == "get_market_overview":
         return hl_connector.get_market_overview()
     elif name == "get_orderbook":
         return hl_connector.get_orderbook(args.get("coin", "BTC"))
     elif name == "get_candles":
-        return hl_connector.get_candles(args.get("coin", "BTC"), args.get("interval", "1h"), int(args.get("hours") or 24))
+        return hl_connector.get_candles(args.get("coin", "BTC"), (args.get("interval") or "1h").lower(), int(args.get("hours") or 24))
     elif name == "get_positions":
         return hl_connector.get_positions()
     elif name == "get_balance":

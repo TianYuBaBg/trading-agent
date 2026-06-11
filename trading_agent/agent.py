@@ -284,7 +284,7 @@ def run_trade_cycle():
             print(f"  [Agent] 结果: {str(result)[:80]}...")
             all_results.append({"tool": name, "result": result})
             # 检测工具是否返回错误
-            if isinstance(result, str) and any(kw in result for kw in ("失败", "错误", "无法", "没有", "error", "not found")):
+            if isinstance(result, str) and any(kw in result for kw in ("失败", "错误", "无法", "没有", "未配置", "error", "not found")):
                 had_errors.append(f"{name}: {result[:100]}")
             elif isinstance(result, dict) and result.get("error"):
                 had_errors.append(f"{name}: {result['error'][:100]}")

@@ -322,7 +322,7 @@ def run_trade_cycle():
         final_thought = decision.get("thought", "")
         final_reply = decision.get("reply", "")
         need_review = decision.get("need_review", False) or need_review
-        lesson_to_save = decision.get("lesson_to_save") or lesson_to_save
+        lesson_to_save = decision.get("lesson_to_save") or ""
 
         tool_calls = decision.get("tool_calls", [])
         if not isinstance(tool_calls, list):

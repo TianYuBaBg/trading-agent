@@ -24,9 +24,12 @@ from trading_agent import config
 _CONFIG_PATH = os.path.join(os.path.dirname(__file__), "data", "config.json")
 
 
+_wallet_cache = None
+
+
 def _load_wallet():
     """
-    从 data/config.json 读取钱包配置。
+    从 data/config.json 读取钱包配置（结果缓存，仅首次读取文件）。
     支持两种模式：
       1. API 钱包模式（推荐）：
          { "main_address": "0x...", "api_key": "0x..." }
@@ -35,8 +38,12 @@ def _load_wallet():
       2. 直连模式：
          { "wallet_private_key": "0x..." }
     """
+    global _wallet_cache
+    if _wallet_cache is not None:
+        return _wallet_cache
     if not os.path.exists(_CONFIG_PATH):
-        return None, None, None
+        _wallet_cache = (None, None, None)
+        return _wallet_cache
     with open(_CONFIG_PATH, encoding="utf-8") as f:
         cfg = json.load(f)
 
@@ -44,14 +51,17 @@ def _load_wallet():
     main_addr = cfg.get("main_address", "")
     api_key = cfg.get("api_key", "")
     if main_addr and api_key:
-        return api_key, main_addr, "api"
+        _wallet_cache = (api_key, main_addr, "api")
+        return _wallet_cache
 
     # 降级到直接私钥模式
     pk = cfg.get("wallet_private_key", "")
     if pk:
-        return pk, pk, "direct"
+        _wallet_cache = (pk, pk, "direct")
+        return _wallet_cache
 
-    return None, None, None
+    _wallet_cache = (None, None, None)
+    return _wallet_cache
 
 
 # ========== 初始化连接 ==========
@@ -388,6 +398,8 @@ def close_trade(coin: str, size: float = None):
     try:
         # 获取当前仓位
         positions = get_positions()
+        if isinstance(positions, str):
+            return f"平仓失败：获取持仓失败（{positions}）"
         pos = None
         if isinstance(positions, list):
             for p in positions:

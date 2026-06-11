@@ -12,6 +12,7 @@
 
 import json
 import datetime
+from functools import lru_cache
 from openai import OpenAI, AuthenticationError
 from trading_agent import config
 from trading_agent import hl_connector
@@ -49,6 +50,7 @@ _TOOL_DESCRIPTIONS = {
 
 # ========== 构建系统提示词 ==========
 
+@lru_cache(maxsize=1)
 def _build_system_prompt():
     return f"""你是 Hyperliquid 永续合约交易员，核心目标是积极发现机会并盈利。
 

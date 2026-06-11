@@ -189,11 +189,12 @@ def get_candles(coin: str, interval: str = "1h", hours: int = 24):
         if not raw:
             return []
         # 限制最多返回 200 条，防止 1m/5m 线数据量撑爆 prompt
+        # 从尾部采样确保最新蜡烛不被跳过
         step = max(1, len(raw) // 200)
+        tail_start = max(0, len(raw) - step * 200)
         candles = []
-        for i, c in enumerate(raw):
-            if i % step != 0:
-                continue
+        for i in range(tail_start, len(raw), step):
+            c = raw[i]
             candles.append({
                 "time": time.strftime("%m-%d %H:%M", time.localtime(c["t"] / 1000)),
                 "open": float(c["o"]),

@@ -25,6 +25,9 @@ while True:
         cycle_count += 1
         result = agent.run_trade_cycle()
 
+        if result.get("error"):
+            print(f"\n[错误] {result['error'][:200]}")
+
         if result.get("need_review"):
             print("\n[复盘] 触发复盘...")
             agent.run_review()

@@ -243,6 +243,9 @@ def auto_mode():
             cycle_count += 1
             result = agent.run_trade_cycle()
 
+            if result.get("error"):
+                print(f"\n[错误] {result['error'][:200]}")
+
             # 如果需要复盘
             if result.get("need_review"):
                 agent.run_review()

@@ -146,8 +146,8 @@ def get_market_overview():
         # 建立 coin -> ctx 的映射（按下标匹配）
         coin_to_ctx = {}
         for i, asset in enumerate(universe):
-            coin = asset["name"]
-            if i < len(ctxs):
+            coin = asset.get("name")
+            if coin and i < len(ctxs):
                 coin_to_ctx[coin] = ctxs[i]
 
         overview = []

@@ -132,7 +132,11 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
         key = f"open_trade:{coin}"
         if key in _executed_ops:
             return {"warning": f"已在当前周期对 {coin} 开过仓，操作已跳过"}
-        result = hl_connector.open_trade(coin, side, float(size), int(args.get("leverage") or 1), _balance=_balance, _positions=_positions)
+        try:
+            size_val = float(size)
+        except (TypeError, ValueError):
+            return {"error": f"开仓失败：size 参数格式无效（{size}）"}
+        result = hl_connector.open_trade(coin, side, size_val, int(args.get("leverage") or 1), _balance=_balance, _positions=_positions)
         if isinstance(result, dict) and result.get("status") == "已开仓":
             _executed_ops.add(key)
         return result

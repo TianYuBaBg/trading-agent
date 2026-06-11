@@ -41,6 +41,8 @@ DAILY_LOSS_LIMIT_PCT = -5  # -5%，日亏 5% 就停
 
 # 只允许交易的币种（空 = 不限）
 ALLOWED_COINS = []  # 例如 ["BTC", "ETH"]
+# 自动转大写，避免 agent.py 中用 .upper() 比较时大小写不匹配
+ALLOWED_COINS = [c.upper() for c in ALLOWED_COINS]
 
 # 自动交易间隔（秒）- 在 main.py 的 --auto 模式中使用
 AUTO_TRADE_INTERVAL = 300  # 5 分钟

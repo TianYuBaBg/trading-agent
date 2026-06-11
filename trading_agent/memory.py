@@ -43,7 +43,7 @@ def _get_model():
 
 
 def _load_lessons():
-    """读取 lessons.json，确保文件有效，返回 lessons 列表"""
+    """读取 lessons.json，确保文件有效且为 list，返回 lessons 列表"""
     os.makedirs(os.path.dirname(_LESSONS_FILE), exist_ok=True)
     if not os.path.exists(_LESSONS_FILE):
         with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
@@ -51,14 +51,18 @@ def _load_lessons():
         return []
     try:
         with open(_LESSONS_FILE, encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        if isinstance(data, list):
+            return data
     except (json.JSONDecodeError, ValueError):
-        backup = _LESSONS_FILE + ".bak"
-        shutil.copy2(_LESSONS_FILE, backup)
-        print(f"  [记忆] lessons.json 损坏，已备份到 {backup}，重新创建")
-        with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
-            json.dump([], f, ensure_ascii=False, indent=2)
-        return []
+        pass
+    # 文件损坏或非 list，备份并重建
+    backup = _LESSONS_FILE + ".bak"
+    shutil.copy2(_LESSONS_FILE, backup)
+    print(f"  [记忆] lessons.json 损坏，已备份到 {backup}，重新创建")
+    with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
+        json.dump([], f, ensure_ascii=False, indent=2)
+    return []
 
 
 def _cosine_similarity(a, b):

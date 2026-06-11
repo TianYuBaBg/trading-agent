@@ -26,7 +26,7 @@ if not DEEPSEEK_API_KEY:
             print(f"  [配置] 读取 data/config.json 失败: {_e}")
 if not DEEPSEEK_API_KEY:
     print("  [配置] 警告: DEEPSEEK_API_KEY 未设置，请在环境变量中配置")
-DEEPSEEK_BASE_URL = "https://api.deepseek.com"
+DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 DEEPSEEK_MODEL = "deepseek-chat"
 
 # ========== 安全限制（防止 AI 乱来）==========

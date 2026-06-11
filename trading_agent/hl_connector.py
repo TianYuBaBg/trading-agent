@@ -380,7 +380,15 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
             return f"开仓失败：仓位限制检查异常（{e}），为安全起见拒绝开仓"
 
         # 所有校验通过后再设置杠杆（避免 size 非法时杠杆被误设）
-        ex.update_leverage(leverage, coin, True)
+        # 检查当前杠杆是否已设好，避免不必要的链上交易
+        _need_leverage_update = True
+        if isinstance(_positions, list):
+            for _p in _positions:
+                if _p.get("coin") == coin and abs(float(_p.get("leverage", 0)) - leverage) < 0.01:
+                    _need_leverage_update = False
+                    break
+        if _need_leverage_update:
+            ex.update_leverage(leverage, coin, True)
 
         is_buy = side == "long"
 

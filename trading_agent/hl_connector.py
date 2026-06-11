@@ -306,13 +306,14 @@ def _get_sz_decimals(coin: str) -> int:
         return 4
 
 
-def open_trade(coin: str, side: str, size: float, leverage: int = 1):
+def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=None, _positions=None):
     """
     开仓
     coin: "BTC"
     side: "long" 或 "short"
     size: 以 USD 计价的仓位大小（例如 100 = 100U）
     leverage: 杠杆倍数
+    _balance/_positions: 调用方已查询过的数据，传入可避免重复 RPC
     返回：订单结果
     """
     ex = _ensure_exchange()
@@ -339,11 +340,17 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1):
         if coin_size < min_sz:
             coin_size = min_sz
 
-        # 检查总仓位是否超过限制
+        # 检查总仓位是否超过限制（优先使用调用方传入的数据，避免重复 RPC）
         try:
-            bal = get_balance()
-            total_value = bal.get("wallet_value", 0) if isinstance(bal, dict) else 0
-            pos_list = get_positions()
+            if _balance is not None and isinstance(_balance, dict):
+                total_value = _balance.get("wallet_value", 0)
+            else:
+                bal = get_balance()
+                total_value = bal.get("wallet_value", 0) if isinstance(bal, dict) else 0
+            if _positions is not None and isinstance(_positions, list):
+                pos_list = _positions
+            else:
+                pos_list = get_positions()
             existing_notional = 0
             if isinstance(pos_list, list):
                 existing_notional = sum(abs(p["size"]) * float(mids.get(p["coin"], p.get("entry_px", 0))) for p in pos_list)

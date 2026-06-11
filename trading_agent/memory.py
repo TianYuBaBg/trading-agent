@@ -21,8 +21,6 @@ import numpy as np
 
 _LESSONS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "lessons.json")
 
-# 编译一次，多处复用
-_PUNC_RE = re.compile(r"\W+")
 
 # ---------- 向量模型 ----------
 _embedding_model = None

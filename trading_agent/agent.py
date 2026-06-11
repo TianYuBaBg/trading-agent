@@ -126,7 +126,7 @@ def _run_tool(name: str, args: dict):
         key = f"open_trade:{coin}"
         if key in _executed_ops:
             return {"warning": f"已在当前周期对 {coin} 开过仓，操作已跳过"}
-        result = hl_connector.open_trade(coin, side, float(size), int(args.get("leverage") or 1))
+        result = hl_connector.open_trade(coin, side, float(size), int(args.get("leverage") or 1), _balance=balance, _positions=positions)
         if isinstance(result, dict) and result.get("status") == "已开仓":
             _executed_ops.add(key)
         return result
@@ -345,9 +345,9 @@ def run_review():
         print("  没有近期交易")
         return
 
-    total_pnl = sum(t.get("pnl", 0) for t in trades if t.get("pnl"))
-    win_trades = [t for t in trades if t.get("pnl", 0) > 0]
-    loss_trades = [t for t in trades if t.get("pnl", 0) < 0]
+    total_pnl = sum(t.get("pnl") or 0 for t in trades)
+    win_trades = [t for t in trades if (t.get("pnl") or 0) > 0]
+    loss_trades = [t for t in trades if (t.get("pnl") or 0) < 0]
 
     review_data = {
         "total_trades": len(trades),

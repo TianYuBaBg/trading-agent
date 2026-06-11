@@ -99,10 +99,11 @@ def _keyword_score(lesson: dict, context_text: str, ctx_chinese: set) -> float:
     """计算一条教训与上下文文本的关键词匹配分数"""
     score = 0
     lesson_lower = (lesson.get("lesson") or "").lower()
+    ctx_lower = context_text.lower()
     for tag in (lesson.get("tags") or []):
-        if tag.lower() in context_text.lower():
+        if tag.lower() in ctx_lower:
             score += 2
-    for kw in set(context_text.lower().split()):
+    for kw in set(ctx_lower.split()):
         if kw in lesson_lower:
             score += 1
     if ctx_chinese:

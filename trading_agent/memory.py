@@ -136,7 +136,7 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     elif tags is None:
         tags = []
     else:
-        tags = [str(t).strip().lower() for t in tags if str(t).strip()]
+        tags = [str(t).strip().lower() for t in tags if t is not None and str(t).strip()]
     tags = list(set(tags))
 
     # 去重：完整文本相同才视为重复（严格匹配，避免误杀相似但不同的教训）

@@ -195,7 +195,7 @@ def recall(context_text: str, top_k: int = 3):
         selected = heapq.nsmallest(top_k, lessons, key=lambda l: l.get("used_count") or 0)
         _increment_used({l.get("id") for l in selected}, lessons=lessons)
         return [
-            {"lesson": l["lesson"], "tags": (l.get("tags") or []), "outcome": (l.get("outcome") or "")}
+            {"lesson": (l.get("lesson") or ""), "tags": (l.get("tags") or []), "outcome": (l.get("outcome") or "")}
             for l in selected
         ]
 
@@ -228,7 +228,7 @@ def recall(context_text: str, top_k: int = 3):
 
                 _increment_used({l.get("id") for _, l in top}, lessons=lessons)
                 return [
-                    {"lesson": l["lesson"], "tags": (l.get("tags") or []), "outcome": (l.get("outcome") or ""),
+                    {"lesson": (l.get("lesson") or ""), "tags": (l.get("tags") or []), "outcome": (l.get("outcome") or ""),
                      "similarity": round(s, 3)}
                     for s, l in top
                 ]
@@ -242,7 +242,7 @@ def recall(context_text: str, top_k: int = 3):
     top_ids = {l.get("id") for _, l in scored[:top_k]}
     _increment_used(top_ids, lessons=lessons)
     return [
-        {"lesson": l["lesson"], "tags": (l.get("tags") or []), "outcome": (l.get("outcome") or "")}
+        {"lesson": (l.get("lesson") or ""), "tags": (l.get("tags") or []), "outcome": (l.get("outcome") or "")}
         for _, l in scored[:top_k]
     ]
 

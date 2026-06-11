@@ -12,7 +12,6 @@ import json
 import math
 import os
 import time
-from decimal import Decimal
 
 from hyperliquid.info import Info
 from hyperliquid.exchange import Exchange

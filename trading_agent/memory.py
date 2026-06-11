@@ -82,6 +82,10 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     if len(lesson_text) < 5:
         return None
 
+    # 归一化 tags：允许字符串传入
+    if isinstance(tags, str):
+        tags = [t.strip() for t in tags.split(",") if t.strip()]
+
     # 去重：去除非文字符号后前 25 字相同，或包含关系
     _punc = re.compile(r"\W+")
     clean = _punc.sub("", lesson_text)[:25]
@@ -234,8 +238,8 @@ def get_all_lessons():
     with open(_LESSONS_FILE, encoding="utf-8") as f:
         lessons = json.load(f)
     return [
-        {"id": l["id"], "date": l["date"], "lesson": l["lesson"],
+        {"id": l.get("id", i + 1), "date": l.get("date", ""), "lesson": l.get("lesson", ""),
          "tags": l.get("tags", []), "outcome": l.get("outcome", ""),
          "used_count": l.get("used_count", 0)}
-        for l in lessons
+        for i, l in enumerate(lessons)
     ]

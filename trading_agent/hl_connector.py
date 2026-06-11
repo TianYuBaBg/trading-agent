@@ -377,10 +377,10 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
         # 检查总仓位限制（用实际开仓额，避免 min_sz 膨胀后实际超限）
         try:
             if _balance is not None and isinstance(_balance, dict):
-                total_value = _balance.get("wallet_value", 0)
+                total_value = _balance.get("wallet_value") or 0
             else:
                 bal = get_balance()
-                total_value = bal.get("wallet_value", 0) if isinstance(bal, dict) else 0
+                total_value = (bal.get("wallet_value") or 0) if isinstance(bal, dict) else 0
             if _positions is not None and isinstance(_positions, list):
                 pos_list = _positions
             else:

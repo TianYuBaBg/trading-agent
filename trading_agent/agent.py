@@ -268,7 +268,7 @@ def run_trade_cycle():
     # ---- 构造自然语言召回上下文（向量搜索用，不用 JSON）----
     recall_context_parts = []
     if isinstance(balance, dict):
-        recall_context_parts.append(f"余额 ${balance.get('wallet_value', 0)}，可用 ${balance.get('available', 0)}")
+        recall_context_parts.append(f"余额 ${balance.get('wallet_value') or 0}，可用 ${balance.get('available') or 0}")
     if isinstance(positions, list) and positions:
         pos_desc = "; ".join(
             f"{p.get('coin', '?')} {p.get('direction', '?')} {abs(p.get('size', 0))}张 盈亏${p.get('pnl', 0)}"
@@ -340,10 +340,10 @@ def run_trade_cycle():
 
         final_thought = decision.get("thought") or ""
         final_reply = decision.get("reply") or ""
-        need_review = decision.get("need_review", False) or need_review
+        need_review = decision.get("need_review") or need_review
         lesson_to_save = decision.get("lesson_to_save") or ""
 
-        tool_calls = decision.get("tool_calls", [])
+        tool_calls = decision.get("tool_calls") or []
         if not isinstance(tool_calls, list):
             tool_calls = []
         if not tool_calls:

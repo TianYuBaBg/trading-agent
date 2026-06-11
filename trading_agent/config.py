@@ -29,10 +29,6 @@ if not DEEPSEEK_API_KEY:
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 DEEPSEEK_MODEL = "deepseek-chat"
 
-# Hyperliquid - 主网
-# 去 https://app.hyperliquid.xyz/ 创建钱包，导出私钥填入 data/config.json
-HL_RPC_URL = "https://api.hyperliquid.xyz"
-
 # ========== 安全限制（防止 AI 乱来）==========
 # 单笔最大仓位：钱包总资金的百分比
 MAX_POSITION_SIZE_PCT = 80  # 80%（激进模式）

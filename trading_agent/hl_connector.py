@@ -296,6 +296,9 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1):
     """
     ex = _ensure_exchange()
     try:
+        # 检查杠杆上限
+        if leverage > config.MAX_LEVERAGE:
+            return f"开仓失败：杠杆 {leverage}x 超过上限 {config.MAX_LEVERAGE}x"
         # 设置杠杆
         ex.update_leverage(leverage, coin, True)
 

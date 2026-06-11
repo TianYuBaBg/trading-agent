@@ -390,6 +390,9 @@ def run_review():
     print(f"{'='*40}")
 
     trades = hl_connector.get_trade_history(days=7)
+    if isinstance(trades, str):
+        print(f"  获取交易记录失败: {trades}")
+        return trades
     if not isinstance(trades, list) or not trades:
         print("  没有近期交易")
         return

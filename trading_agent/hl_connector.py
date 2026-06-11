@@ -305,9 +305,11 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1):
         # 检查总仓位是否超过限制
         try:
             bal = get_balance()
-            total_value = bal.get("wallet_value", 0)
+            total_value = bal.get("wallet_value", 0) if isinstance(bal, dict) else 0
             pos_list = get_positions()
-            existing_notional = sum(abs(p["size"]) * p.get("entry_px", 0) for p in pos_list if p.get("coin") != coin)
+            existing_notional = 0
+            if isinstance(pos_list, list):
+                existing_notional = sum(abs(p["size"]) * p.get("entry_px", 0) for p in pos_list if p.get("coin") != coin)
             new_notional = coin_size * current_price
             total_notional = existing_notional + new_notional
             max_allowed = total_value * (config.MAX_POSITION_SIZE_PCT / 100)

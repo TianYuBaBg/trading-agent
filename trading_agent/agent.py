@@ -238,7 +238,7 @@ def run_trade_cycle():
         return {"error": f"获取行情失败：{overview}", "reply": f"获取行情失败：{overview}", "state": "", "tool_results": [], "thought": "", "need_review": False, "lesson_to_save": ""}
     # 风控检查：DAILY_LOSS_LIMIT_PCT < 0 表示启用风控（-5 表示日亏 5% 停止）
     if config.DAILY_LOSS_LIMIT_PCT < 0:
-        wallet_value = balance.get("wallet_value", 0)
+        wallet_value = balance.get("wallet_value") or 0
         if wallet_value > 0:
             recent_trades = hl_connector.get_trade_history(days=1)
             if not isinstance(recent_trades, list):

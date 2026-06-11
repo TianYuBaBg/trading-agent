@@ -40,7 +40,6 @@ _TOOL_DESCRIPTIONS = {
     "get_candles": "查看某个币的K线趋势，参数：coin（币种），interval（间隔：1m/5m/15m/1h/4h/1d，默认1h），hours（往回看几小时，默认24）",
     "get_positions": "查看当前持仓及盈亏",
     "get_balance": "查看账户总资产和可用余额",
-    "transfer_spot_to_perp": "把 USDC 从 Spot 转到永续合约账户（开仓前 Perp 余额不足时调用），参数：amount（金额）",
     "open_trade": "开仓交易，参数：coin（币种），side（long/short），size（USD金额≥10），leverage（杠杆倍数，默认1）",
     "close_trade": "平仓，参数：coin（币种）",
     "recall_lessons": "回想过去类似情况学到的教训，参数：context（当前市场情况描述）",
@@ -238,7 +237,10 @@ def run_trade_cycle():
 
         # 把所有工具结果送回 AI 继续分析
         messages.append({"role": "assistant", "content": json.dumps(decision, ensure_ascii=False)})
-        all_results_str = json.dumps(all_results, ensure_ascii=False)[:3000]
+        # 关键操作结果放前面，避免截断切掉
+        key_ops = {"open_trade", "close_trade", "transfer_spot_to_perp", "add_lesson"}
+        ordered = sorted(all_results, key=lambda r: (r["tool"] not in key_ops, 0))
+        all_results_str = json.dumps(ordered, ensure_ascii=False)[:8000]
         feedback = f"## 工具返回结果\n{all_results_str}\n"
         if had_errors:
             feedback += "\n⚠️ 注意：以上工具有失败的情况，请仔细检查失败原因，不要假设操作已成功执行。\n"

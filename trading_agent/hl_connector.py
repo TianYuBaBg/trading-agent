@@ -328,7 +328,7 @@ def _get_sz_decimals(coin: str) -> int:
         for asset in (meta.get("universe") or []):
             name = asset.get("name")
             if name:
-                _sz_decimals_cache[name] = asset.get("szDecimals", 4)
+                _sz_decimals_cache[name] = asset.get("szDecimals") or 4
         return _sz_decimals_cache.get(coin, 4)
     except Exception:
         return 4

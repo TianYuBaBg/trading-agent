@@ -481,6 +481,9 @@ def run_review():
             print("  复盘教训提取：AI 返回空响应，跳过")
             return review_data
         lesson_data = _extract_json(lesson_response.choices[0].message.content)
+        if "error" in lesson_data:
+            print(f"  复盘教训提取 JSON 解析失败: {lesson_data['error']}")
+            return review_data
         lessons_list = lesson_data.get("lessons") or []
         if isinstance(lessons_list, list):
             for l in lessons_list:

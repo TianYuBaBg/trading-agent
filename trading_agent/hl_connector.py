@@ -254,9 +254,10 @@ def get_balance():
         return "未配置钱包地址"
     try:
         state = info.user_state(addr)
-        cross = state.get("crossMarginSummary", {})
-        perp_value = float(cross.get("accountValue") or 0)
-        margin_used = float(cross.get("totalMarginUsed") or 0)
+        cross = state.get("crossMarginSummary") or {}
+        isolated = state.get("isolatedMarginSummary") or {}
+        perp_value = float(cross.get("accountValue") or 0) + float(isolated.get("accountValue") or 0)
+        margin_used = float(cross.get("totalMarginUsed") or 0) + float(isolated.get("totalMarginUsed") or 0)
 
         # 也查 Spot 余额
         spot_value = 0.0

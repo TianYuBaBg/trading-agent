@@ -67,6 +67,20 @@ def _cosine_similarity(a, b):
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-10))
 
 
+def _increment_used(ids_to_inc):
+    """将指定 id 的教训 used_count 加 1，写回文件"""
+    if not ids_to_inc:
+        return
+    _ensure_file()
+    with open(_LESSONS_FILE, encoding="utf-8") as f:
+        lessons = json.load(f)
+    for l in lessons:
+        if l.get("id") in ids_to_inc:
+            l["used_count"] = l.get("used_count", 0) + 1
+    with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
+        json.dump(lessons, f, ensure_ascii=False, indent=2)
+
+
 # ========== 公开接口 ==========
 
 def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
@@ -139,15 +153,6 @@ def recall(context_text: str, top_k: int = 3):
 
     if not lessons:
         return []
-
-    # 递增 used_count（无论走哪条召回路径，只要被返回就计一次使用）
-    def _increment_used(ids_to_inc):
-        nonlocal lessons
-        for l in lessons:
-            if l.get("id") in ids_to_inc:
-                l["used_count"] = l.get("used_count", 0) + 1
-        with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
-            json.dump(lessons, f, ensure_ascii=False, indent=2)
 
     # 如果所有 lessons 都没有 embedding（旧数据），返回最近几条
     has_any_embedding = any(l.get("embedding") for l in lessons)

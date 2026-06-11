@@ -382,6 +382,9 @@ def run_review():
             temperature=0.7,
             response_format={"type": "json_object"},
         )
+        if not lesson_response.choices:
+            print("  复盘教训提取：AI 返回空响应，跳过")
+            return review_data
         lesson_data = json.loads(lesson_response.choices[0].message.content)
         for l in lesson_data.get("lessons", []):
             text = l.get("text", "")

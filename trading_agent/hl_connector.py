@@ -361,7 +361,15 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
                 pos_list = get_positions()
             existing_notional = 0
             if isinstance(pos_list, list):
-                existing_notional = sum(abs(p["size"]) * float(mids.get(p["coin"], p.get("entry_px", 0))) for p in pos_list)
+                for p in pos_list:
+                    # 获取持仓币种的价格：优先用当前市价，否则用开仓价
+                    coin_price = mids.get(p["coin"])
+                    if coin_price is None or float(coin_price) == 0:
+                        coin_price = p.get("entry_px", 0)
+                    # 如果价格仍无效（为 0），跳过该持仓（避免计算错误）
+                    if float(coin_price) <= 0:
+                        continue
+                    existing_notional += abs(p["size"]) * float(coin_price)
             new_notional = coin_size * current_price
             total_notional = existing_notional + new_notional
             max_allowed = total_value * (config.MAX_POSITION_SIZE_PCT / 100)

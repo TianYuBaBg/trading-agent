@@ -326,7 +326,9 @@ def _get_sz_decimals(coin: str) -> int:
         meta = info.meta()
         # 一次遍历缓存所有币种的 szDecimals，避免每个新币种都调一次 meta()
         for asset in (meta.get("universe") or []):
-            _sz_decimals_cache[asset["name"]] = asset["szDecimals"]
+            name = asset.get("name")
+            if name:
+                _sz_decimals_cache[name] = asset.get("szDecimals", 4)
         return _sz_decimals_cache.get(coin, 4)
     except Exception:
         return 4

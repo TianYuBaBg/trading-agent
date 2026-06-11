@@ -18,9 +18,18 @@ from trading_agent import hl_connector
 from trading_agent import memory
 
 
-# ========== DeepSeek 客户端 ==========
+# ========== DeepSeek 客户端（懒加载）==========
 
-_client = OpenAI(api_key=config.DEEPSEEK_API_KEY, base_url=config.DEEPSEEK_BASE_URL)
+_client = None
+
+
+def _get_client():
+    global _client
+    if _client is None:
+        if not config.DEEPSEEK_API_KEY:
+            raise RuntimeError("DEEPSEEK_API_KEY 未设置，请通过环境变量配置")
+        _client = OpenAI(api_key=config.DEEPSEEK_API_KEY, base_url=config.DEEPSEEK_BASE_URL)
+    return _client
 
 
 # ========== 工具函数描述 ==========
@@ -193,7 +202,7 @@ def run_trade_cycle():
 
     for _round in range(max_rounds):
         try:
-            resp = _client.chat.completions.create(
+            resp = _get_client().chat.completions.create(
                 model=config.DEEPSEEK_MODEL,
                 messages=messages,
                 temperature=0.7,
@@ -271,7 +280,7 @@ def run_review():
     print(f"  胜率: {review_data['win_rate']}%")
 
     try:
-        response = _client.chat.completions.create(
+        response = _get_client().chat.completions.create(
             model=config.DEEPSEEK_MODEL,
             messages=[
                 {"role": "system", "content": "你是交易复盘分析师，分析以下近期交易数据，找出问题并提出改进建议。"},

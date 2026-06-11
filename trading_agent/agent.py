@@ -311,7 +311,7 @@ def run_trade_cycle():
         final_thought = decision.get("thought", "")
         final_reply = decision.get("reply", "")
         need_review = decision.get("need_review", False)
-        lesson_to_save = decision.get("lesson_to_save", "")
+        lesson_to_save = decision.get("lesson_to_save") or lesson_to_save
 
         tool_calls = decision.get("tool_calls", [])
         if not isinstance(tool_calls, list):
@@ -447,13 +447,15 @@ def run_review():
             print("  复盘教训提取：AI 返回空响应，跳过")
             return review_data
         lesson_data = _extract_json(lesson_response.choices[0].message.content)
-        for l in lesson_data.get("lessons", []):
-            text = l.get("text", "")
-            if text:
-                tags = l.get("tags", [])
-                if isinstance(tags, str):
-                    tags = [t.strip() for t in tags.split(",") if t.strip()]
-                memory.add_lesson(text, tags, l.get("outcome", ""))
+        lessons_list = lesson_data.get("lessons") or []
+        if isinstance(lessons_list, list):
+            for l in lessons_list:
+                text = l.get("text", "")
+                if text:
+                    tags = l.get("tags", [])
+                    if isinstance(tags, str):
+                        tags = [t.strip() for t in tags.split(",") if t.strip()]
+                    memory.add_lesson(text, tags, l.get("outcome", ""))
 
     except Exception as e:
         print(f"  复盘 AI 分析失败: {e}")

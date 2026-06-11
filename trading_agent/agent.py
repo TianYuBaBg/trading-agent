@@ -201,7 +201,9 @@ def run_trade_cycle():
         wallet_value = balance.get("wallet_value", 0)
         if wallet_value > 0:
             recent_trades = hl_connector.get_trade_history(days=1)
-            if isinstance(recent_trades, list) and recent_trades:
+            if not isinstance(recent_trades, list):
+                print(f"  [风控] 获取今日成交记录失败（{str(recent_trades)[:80]}），跳过风控检查")
+            elif recent_trades:
                 today_pnl = sum(t.get("pnl", 0) for t in recent_trades if t.get("pnl"))
                 loss_limit = wallet_value * abs(config.DAILY_LOSS_LIMIT_PCT) / 100
                 if today_pnl < -loss_limit:
@@ -291,8 +293,8 @@ def run_trade_cycle():
                 result = {"error": f"工具 {name} 执行异常: {e}"}
             print(f"  [Agent] 结果: {str(result)[:80]}...")
             all_results.append({"tool": name, "result": result})
-            # 检测工具是否返回错误
-            if isinstance(result, str) and any(kw in result for kw in ("失败", "错误", "无法", "未配置", "error", "not found")):
+            # 检测工具是否返回错误（工具成功时均返回 dict，字符串 = 错误）
+            if isinstance(result, str):
                 had_errors.append(f"{name}: {result[:100]}")
             elif isinstance(result, dict) and result.get("error"):
                 had_errors.append(f"{name}: {result['error'][:100]}")

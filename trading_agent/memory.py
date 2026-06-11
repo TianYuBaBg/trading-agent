@@ -142,10 +142,20 @@ def recall(context_text: str, top_k: int = 3):
     if not lessons:
         return []
 
+    # 递增 used_count（无论走哪条召回路径，只要被返回就计一次使用）
+    def _increment_used(ids_to_inc):
+        nonlocal lessons
+        for l in lessons:
+            if l.get("id") in ids_to_inc:
+                l["used_count"] = l.get("used_count", 0) + 1
+        with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
+            json.dump(lessons, f, ensure_ascii=False, indent=2)
+
     # 如果所有 lessons 都没有 embedding（旧数据），返回最近几条
     has_any_embedding = any(l.get("embedding") for l in lessons)
     if not has_any_embedding:
         recent = lessons[-top_k:]
+        _increment_used({l.get("id") for l in recent})
         return [
             {"lesson": l["lesson"], "tags": l.get("tags", []), "outcome": l.get("outcome", "")}
             for l in recent
@@ -193,6 +203,7 @@ def recall(context_text: str, top_k: int = 3):
                     fallback.sort(key=lambda x: -x[0])
                     top.extend(fallback[:top_k - len(top)])
 
+                _increment_used({l.get("id") for _, l in top})
                 return [
                     {"lesson": l["lesson"], "tags": l.get("tags", []), "outcome": l.get("outcome", ""),
                      "similarity": round(s, 3)}
@@ -222,6 +233,8 @@ def recall(context_text: str, top_k: int = 3):
             score += overlap * 5
         scored.append((score, l))
     scored.sort(key=lambda x: -x[0])
+    top_ids = {l.get("id") for _, l in scored[:top_k]}
+    _increment_used(top_ids)
     return [
         {"lesson": l["lesson"], "tags": l.get("tags", []), "outcome": l.get("outcome", "")}
         for _, l in scored[:top_k]

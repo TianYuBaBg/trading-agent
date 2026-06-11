@@ -480,6 +480,10 @@ def transfer_spot_to_perp(amount: float):
     ex = _ensure_exchange()
     try:
         result = ex.usd_class_transfer(amount, to_perp=True)
-        return {"status": "ok", "amount": amount, "raw": str(result)[:200]}
+        # SDK 可能在返回的 dict 中嵌了错误
+        raw_str = str(result)
+        if '"status":"err"' in raw_str or '"status": "err"' in raw_str or '"response":"Must deposit"' in raw_str:
+            return f"转账失败：API 钱包模式不支持转账（如需转账请用直连私钥模式），raw={raw_str[:150]}"
+        return {"status": "ok", "amount": amount, "raw": raw_str[:200]}
     except Exception as e:
         return f"转账失败：{e}"

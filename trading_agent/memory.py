@@ -134,8 +134,9 @@ def recall(context_text: str, top_k: int = 3):
     if not lessons:
         return []
 
-    # 如果 lessons 没有 embedding（旧数据），返回最近几条
-    if not lessons[0].get("embedding"):
+    # 如果所有 lessons 都没有 embedding（旧数据），返回最近几条
+    has_any_embedding = any(l.get("embedding") for l in lessons)
+    if not has_any_embedding:
         recent = lessons[-top_k:]
         for l in recent:
             l["used_count"] = l.get("used_count", 0) + 1

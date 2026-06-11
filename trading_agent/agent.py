@@ -463,7 +463,7 @@ def run_review():
                     tags = l.get("tags") or []
                     if isinstance(tags, str):
                         tags = [t.strip() for t in tags.split(",") if t.strip()]
-                    memory.add_lesson(text, tags, l.get("outcome", ""))
+                    memory.add_lesson(text, tags, l.get("outcome") or "")
 
     except Exception as e:
         print(f"  复盘 AI 分析失败: {e}")

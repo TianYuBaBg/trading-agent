@@ -160,7 +160,7 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
         "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
         "lesson": lesson_text,
         "tags": tags or [],
-        "outcome": outcome,
+        "outcome": outcome or "",
         "embedding": embedding,
         "used_count": 0,
     }

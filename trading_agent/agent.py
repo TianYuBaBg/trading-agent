@@ -320,6 +320,7 @@ def run_trade_cycle():
 
         # 执行工具（每轮独立执行，结果不回累积）
         had_errors = []
+        results_before = len(all_results)
         for tc in tool_calls:
             if not isinstance(tc, dict):
                 continue
@@ -360,7 +361,7 @@ def run_trade_cycle():
         messages.append({"role": "assistant", "content": json.dumps(decision, ensure_ascii=False)})
         # 只传本轮工具结果（非累积），避免多轮累积导致 8000 字截断切掉新结果
         key_ops = {"open_trade", "close_trade", "transfer_spot_to_perp", "add_lesson"}
-        round_results = all_results[len(all_results) - len(tool_calls):]
+        round_results = all_results[results_before:]
         # 按优先级排序：交易操作 > 其他操作，同类按工具名字典序
         ordered = sorted(round_results, key=lambda r: (0 if r["tool"] in key_ops else 1, r["tool"]))
         all_results_str = json.dumps(ordered, ensure_ascii=False)[:8000]

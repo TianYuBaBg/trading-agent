@@ -106,13 +106,18 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     else:
         tags = [str(t).strip() for t in tags if str(t).strip()]
 
-    # 去重：完整文本前 80 字符相同才视为重复（避免开头相似但结论不同的教训被误杀）
-    clean = lesson_text.strip()[:80]
+    # 去重：完整文本相似度检查（避免开头相似但结论不同的教训被误杀）
+    clean = lesson_text.strip()
     if len(clean) >= 30:
         for existing in lessons:
-            existing_text = existing.get("lesson", "")
-            if existing_text.strip()[:80] == clean:
+            existing_text = existing.get("lesson", "").strip()
+            # 只有当完整文本相同或相似度>90%时才视为重复
+            if clean == existing_text:
                 return existing
+            # 对于长文本，检查前100字符+后50字符是否都相同（允许中间有细微差异）
+            if len(clean) > 100 and len(existing_text) > 100:
+                if clean[:100] == existing_text[:100] and clean[-50:] == existing_text[-50:]:
+                    return existing
 
     # 生成向量
     model = _get_model()

@@ -1,6 +1,6 @@
 """调试 ReAct 循环，看 AI 到底在每轮说了什么"""
 import sys, os, json
-sys.path.insert(0, 'D:/ai/Claudos')
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from openai import OpenAI
 from trading_agent import config, hl_connector, memory
@@ -78,5 +78,5 @@ for round_idx in range(3):
 
     # 把全部结果一次性送回给 AI
     messages.append({"role": "assistant", "content": json.dumps(decision, ensure_ascii=False)})
-    results_str = json.dumps(all_results, ensure_ascii=False)[:3000]
-    messages.append({"role": "user", "content": f"## 以下是工具返回结果\n{results_str}\n## 根据这些新数据，分析并得出最终决策。\n## tool_calls为空 = 最终决策。如需开仓用 open_trade，平仓用 close_trade。"})
+    results_str = json.dumps(all_results, ensure_ascii=False)[:8000]
+    messages.append({"role": "user", "content": f"## 以下是工具返回结果\n{results_str}\n## 根据这些新数据，分析并得出最终决策。\n## 同时注意：以下工具可能有失败的情况，请检查原因，不要假设操作已成功执行。\n## tool_calls为空 = 最终决策。如需开仓用 open_trade，平仓用 close_trade。"})

@@ -164,6 +164,31 @@ def recall(context_text: str, top_k: int = 3):
                         scored.append((sim, l))
                 scored.sort(key=lambda x: -x[0])
                 top = scored[:top_k]
+
+                # 向量结果不足 top_k 时，用关键词匹配补充无 embedding 的教训
+                if len(top) < top_k:
+                    selected_ids = {id(l[1]) for l in top}
+                    keywords = set(context_text.lower().split())
+                    ctx_chinese = set(re.findall(r'[一-鿿]', context_text.lower()))
+                    remaining = [l for l in lessons if id(l) not in selected_ids and not l.get("embedding")]
+                    fallback = []
+                    for l in remaining:
+                        score = 0
+                        lesson_lower = l.get("lesson", "").lower()
+                        for tag in l.get("tags", []):
+                            if tag.lower() in context_text.lower():
+                                score += 2
+                        for kw in keywords:
+                            if kw in lesson_lower:
+                                score += 1
+                        if ctx_chinese:
+                            lesson_cjk = set(re.findall(r'[一-鿿]', lesson_lower))
+                            overlap = len(ctx_chinese & lesson_cjk) / max(len(ctx_chinese), 1)
+                            score += overlap * 5
+                        fallback.append((score, l))
+                    fallback.sort(key=lambda x: -x[0])
+                    top.extend(fallback[:top_k - len(top)])
+
                 for _, l in top:
                     l["used_count"] = l.get("used_count", 0) + 1
                 with open(_LESSONS_FILE, "w", encoding="utf-8") as f:

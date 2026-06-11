@@ -71,6 +71,7 @@ _info = None
 _exchange = None
 _wallet_address = None
 _sz_decimals_cache = {}
+_user_state_cache = None
 
 
 def _ensure_info():
@@ -108,6 +109,24 @@ def _ensure_wallet_address():
     elif sign_key:
         _wallet_address = Account.from_key(sign_key).address
     return _wallet_address
+
+
+# ========== user_state 缓存（减少重复 RPC）==========
+
+def reset_user_state_cache():
+    """重置 user_state 缓存，确保下次读取获取最新数据"""
+    global _user_state_cache
+    _user_state_cache = None
+
+
+def _get_user_state(addr: str):
+    """获取 user_state（带 per-cycle 缓存，避免一轮内重复 RPC）"""
+    global _user_state_cache
+    if _user_state_cache is not None:
+        return _user_state_cache
+    info = _ensure_info()
+    _user_state_cache = info.user_state(addr)
+    return _user_state_cache
 
 
 # ========== 查询工具 ==========
@@ -219,7 +238,7 @@ def get_positions():
     if not addr:
         return "未配置钱包地址"
     try:
-        state = info.user_state(addr)
+        state = _get_user_state(addr)
         positions = []
         for pos in (state.get("assetPositions") or []):
             p = pos.get("position")
@@ -255,7 +274,7 @@ def get_balance():
     if not addr:
         return "未配置钱包地址"
     try:
-        state = info.user_state(addr)
+        state = _get_user_state(addr)
         cross = state.get("crossMarginSummary") or {}
         isolated = state.get("isolatedMarginSummary") or {}
         perp_value = float(cross.get("accountValue") or 0) + float(isolated.get("accountValue") or 0)

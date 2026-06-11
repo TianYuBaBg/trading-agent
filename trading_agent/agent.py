@@ -200,6 +200,7 @@ def run_trade_cycle():
     print(f"交易循环开始：{datetime.datetime.now().strftime('%H:%M:%S')}")
     print(f"{'='*40}")
 
+    hl_connector.reset_user_state_cache()
     balance = hl_connector.get_balance()
     positions = hl_connector.get_positions()
     overview = hl_connector.get_market_overview()
@@ -345,6 +346,7 @@ def run_trade_cycle():
                 elif name == "transfer_spot_to_perp" and result.get("status") == "ok":
                     need_refresh = True
             if need_refresh:
+                hl_connector.reset_user_state_cache()
                 new_balance = hl_connector.get_balance()
                 new_positions = hl_connector.get_positions()
                 if isinstance(new_balance, dict):

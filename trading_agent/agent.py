@@ -113,28 +113,40 @@ def _run_tool(name: str, args: dict):
     elif name == "get_balance":
         return hl_connector.get_balance()
     elif name == "open_trade":
+        # 检查必填参数
+        coin = args.get("coin")
+        side = args.get("side")
+        size = args.get("size")
+        if not coin or not side or not size:
+            return {"error": "开仓失败：缺少必填参数 coin/side/size"}
         # 检查币种白名单
-        if config.ALLOWED_COINS and args.get("coin") not in config.ALLOWED_COINS:
-            return {"error": f"{args['coin']} 不在允许交易列表(ALLOWED_COINS)中"}
-        key = f"open_trade:{args['coin']}"
+        if config.ALLOWED_COINS and coin not in config.ALLOWED_COINS:
+            return {"error": f"{coin} 不在允许交易列表(ALLOWED_COINS)中"}
+        key = f"open_trade:{coin}"
         if key in _executed_ops:
-            return {"warning": f"已在当前周期对 {args['coin']} 开过仓，操作已跳过"}
-        result = hl_connector.open_trade(args["coin"], args["side"], float(args["size"]), int(args.get("leverage", 1)))
+            return {"warning": f"已在当前周期对 {coin} 开过仓，操作已跳过"}
+        result = hl_connector.open_trade(coin, side, float(size), int(args.get("leverage", 1)))
         if isinstance(result, dict) and result.get("status") == "已开仓":
             _executed_ops.add(key)
         return result
     elif name == "close_trade":
-        key = f"close_trade:{args['coin']}"
+        coin = args.get("coin")
+        if not coin:
+            return {"error": "平仓失败：缺少必填参数 coin"}
+        key = f"close_trade:{coin}"
         if key in _executed_ops:
-            return {"warning": f"已在当前周期对 {args['coin']} 平过仓，操作已跳过"}
-        result = hl_connector.close_trade(args["coin"])
+            return {"warning": f"已在当前周期对 {coin} 平过仓，操作已跳过"}
+        result = hl_connector.close_trade(coin)
         if isinstance(result, dict) and result.get("status") == "已平仓":
             _executed_ops.add(key)
         return result
     elif name == "recall_lessons":
         return memory.recall(args.get("context", ""))
     elif name == "add_lesson":
-        return memory.add_lesson(args["lesson"], args.get("tags", []), args.get("outcome", ""))
+        lesson = args.get("lesson")
+        if not lesson:
+            return {"error": "记录教训失败：缺少必填参数 lesson"}
+        return memory.add_lesson(lesson, args.get("tags", []), args.get("outcome", ""))
     elif name == "transfer_spot_to_perp":
         return hl_connector.transfer_spot_to_perp(float(args.get("amount", 0)))
     return {"error": f"未知工具: {name}"}

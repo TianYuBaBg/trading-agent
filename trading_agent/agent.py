@@ -182,7 +182,10 @@ def _extract_json(text: str) -> dict:
     if brace_start >= 0 and brace_end > brace_start:
         clean = clean[brace_start:brace_end + 1]
     try:
-        return json.loads(clean)
+        result = json.loads(clean)
+        if not isinstance(result, dict):
+            return {"error": f"JSON 解析结果不是对象：{type(result).__name__}", "_raw": text[:200]}
+        return result
     except json.JSONDecodeError as e:
         return {"error": f"JSON 解析失败: {e}", "_raw": text[:200]}
 

@@ -201,16 +201,21 @@ def get_positions():
         state = info.user_state(addr)
         positions = []
         for pos in state.get("assetPositions", []):
-            p = pos["position"]
+            p = pos.get("position")
+            if not p:
+                continue
             szi = p.get("szi", 0)
             if szi is None or float(szi) == 0:
                 continue
+            lev = p.get("leverage", 1)
+            if isinstance(lev, dict):
+                lev = lev.get("value", 1)
             positions.append({
-                "coin": p["coin"],
+                "coin": p.get("coin", ""),
                 "size": float(szi),
                 "entry_px": float(p.get("entryPx", 0) or 0),
                 "pnl": float(p.get("unrealizedPnl", 0) or 0),
-                "leverage": float(p.get("leverage", {}).get("value", 1) or 1),
+                "leverage": float(lev or 1),
                 "liquidation_px": float(p.get("liquidationPx") or 0),
             })
         return positions

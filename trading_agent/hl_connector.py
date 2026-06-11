@@ -385,7 +385,7 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
                 for p in pos_list:
                     coin_price = mids.get(p["coin"])
                     if coin_price is None or float(coin_price) == 0:
-                        coin_price = p.get("entry_px", 0)
+                        coin_price = p.get("entry_px") or 0
                     if float(coin_price) <= 0:
                         continue
                     existing_notional += abs(p["size"]) * float(coin_price)
@@ -572,15 +572,18 @@ def _update_trade_close(coin: str, exit_price: float, pnl: float):
     trades = _load_trades()
     # 标记该币种最近一笔未平仓记录为已平仓
     now = datetime.datetime.now().isoformat()
+    found = False
     for t in reversed(trades):
         if t.get("coin") == coin and not t.get("close_time"):
             t["close_time"] = now
             t["exit_price"] = exit_price
             t["pnl"] = round(pnl, 2)
             t["status"] = "closed"
+            found = True
             break  # 只关最近一笔，避免多笔重复的 PnL
-    with open(_TRADES_FILE, "w", encoding="utf-8") as f:
-        json.dump(trades, f, ensure_ascii=False, indent=2)
+    if found:
+        with open(_TRADES_FILE, "w", encoding="utf-8") as f:
+            json.dump(trades, f, ensure_ascii=False, indent=2)
 
 
 def get_trade_history(days: int = 7):

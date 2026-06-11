@@ -215,8 +215,21 @@ def run_trade_cycle():
 市场概况：{json.dumps(overview[:20] if isinstance(overview, list) else overview, ensure_ascii=False)}
 """
 
+    # ---- 构造自然语言召回上下文（向量搜索用，不用 JSON）----
+    recall_context_parts = []
+    if isinstance(balance, dict):
+        recall_context_parts.append(f"余额 ${balance.get('wallet_value', 0)}，可用 ${balance.get('available', 0)}")
+    if isinstance(positions, list) and positions:
+        pos_desc = "; ".join(f"{p['coin']} {p['direction']} {abs(p['size'])}张 盈亏${p['pnl']}" for p in positions)
+        recall_context_parts.append(f"持仓: {pos_desc}")
+    if isinstance(overview, list):
+        top_coins = overview[:5]
+        mkt_desc = "; ".join(f"{c['coin']} ${c['mid']}" for c in top_coins)
+        recall_context_parts.append(f"行情: {mkt_desc}")
+    recall_context = "，".join(recall_context_parts) or state_text
+
     # ---- 第 2 步：回想教训 ----
-    relevant_lessons = memory.recall(state_text)
+    relevant_lessons = memory.recall(recall_context)
     lessons_text = json.dumps(relevant_lessons, ensure_ascii=False, indent=2) if relevant_lessons else "暂无相关教训"
 
     # ---- 第 3 步：ReAct 多轮循环 ----

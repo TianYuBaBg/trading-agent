@@ -15,6 +15,7 @@
 import json
 import os
 import re
+import shutil
 import datetime
 import numpy as np
 
@@ -50,7 +51,6 @@ def _ensure_file():
         with open(_LESSONS_FILE, encoding="utf-8") as f:
             json.load(f)
     except (json.JSONDecodeError, ValueError):
-        import shutil
         backup = _LESSONS_FILE + ".bak"
         shutil.copy2(_LESSONS_FILE, backup)
         print(f"  [记忆] lessons.json 损坏，已备份到 {backup}，重新创建")

@@ -14,6 +14,7 @@
 
 import json
 import os
+import re
 import datetime
 import numpy as np
 
@@ -65,11 +66,13 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     with open(_LESSONS_FILE, encoding="utf-8") as f:
         lessons = json.load(f)
 
-    # 去重：前 20 字相同，或新教训包含在已有教训中（反之亦然）
-    short = lesson_text.strip()[:20]
+    # 去重：去除非文字符号后前 25 字相同，或包含关系
+    _punc = re.compile(r"\W+")
+    clean = _punc.sub("", lesson_text.strip())[:25]
     for existing in lessons:
         existing_text = existing.get("lesson", "")
-        if short == existing_text[:20] or short in existing_text or existing_text[:20] in lesson_text:
+        existing_clean = _punc.sub("", existing_text)[:25]
+        if clean == existing_clean or clean in existing_text or existing_clean in lesson_text:
             return existing
 
     # 生成向量

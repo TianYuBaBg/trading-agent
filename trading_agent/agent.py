@@ -414,7 +414,7 @@ def run_review():
         return
 
     # 过滤开仓成交（closedPnl=0），只保留已平仓成交用于计算胜率
-    closed = [t for t in trades if t.get("pnl") != 0]
+    closed = [t for t in trades if t.get("pnl") is not None and t.get("pnl") != 0]
     total_pnl = sum(t.get("pnl") or 0 for t in closed)
     win_trades = [t for t in closed if (t.get("pnl") or 0) > 0]
     loss_trades = [t for t in closed if (t.get("pnl") or 0) < 0]

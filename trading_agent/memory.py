@@ -251,7 +251,7 @@ def get_all_lessons():
     """获取所有教训（不含 embedding）"""
     lessons = _load_lessons()
     return [
-        {"id": l.get("id", i + 1), "date": l.get("date", ""), "lesson": l.get("lesson", ""),
+        {"id": l.get("id") or i + 1, "date": l.get("date") or "", "lesson": l.get("lesson") or "",
          "tags": (l.get("tags") or []), "outcome": (l.get("outcome") or ""),
          "used_count": l.get("used_count") or 0}
         for i, l in enumerate(lessons)

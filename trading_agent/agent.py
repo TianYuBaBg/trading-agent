@@ -313,6 +313,8 @@ def run_trade_cycle():
         lesson_to_save = decision.get("lesson_to_save", "")
 
         tool_calls = decision.get("tool_calls", [])
+        if not isinstance(tool_calls, list):
+            tool_calls = []
         if not tool_calls:
             break  # AI 做出最终决策
 

@@ -310,7 +310,7 @@ def run_trade_cycle():
                     "need_review": False,
                     "lesson_to_save": "",
                 }
-            messages.append({"role": "user", "content": f"输出格式错误: {e}，请重新输出有效的 JSON 对象"})
+            messages.append({"role": "user", "content": f"调用出错: {e}，请重新尝试"})
             continue
 
         final_thought = decision.get("thought", "")

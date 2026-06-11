@@ -22,6 +22,8 @@ import numpy as np
 
 _LESSONS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "lessons.json")
 
+# 内存缓存，避免同一个 cycle 内重复读文件
+_lessons_cache = None
 
 # ---------- 向量模型 ----------
 _embedding_model = None
@@ -43,17 +45,22 @@ def _get_model():
 
 
 def _load_lessons():
-    """读取 lessons.json，确保文件有效且为 list，返回 lessons 列表"""
+    """读取 lessons.json，确保文件有效且为 list，返回 lessons 列表（内存缓存）"""
+    global _lessons_cache
+    if _lessons_cache is not None:
+        return _lessons_cache
     os.makedirs(os.path.dirname(_LESSONS_FILE), exist_ok=True)
     if not os.path.exists(_LESSONS_FILE):
         with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
             json.dump([], f, ensure_ascii=False, indent=2)
+        _lessons_cache = []
         return []
     try:
         with open(_LESSONS_FILE, encoding="utf-8") as f:
             data = json.load(f)
         if isinstance(data, list):
-            return [l for l in data if isinstance(l, dict)]
+            _lessons_cache = [l for l in data if isinstance(l, dict)]
+            return _lessons_cache
     except (json.JSONDecodeError, ValueError):
         pass
     # 文件损坏或非 list，备份并重建
@@ -62,6 +69,7 @@ def _load_lessons():
     print(f"  [记忆] lessons.json 损坏，已备份到 {backup}，重新创建")
     with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
         json.dump([], f, ensure_ascii=False, indent=2)
+    _lessons_cache = []
     return []
 
 
@@ -75,6 +83,7 @@ def _cosine_similarity(a, b):
 def _increment_used(ids_to_inc, lessons=None):
     """将指定 id 的教训 used_count 加 1，写回文件
     lessons: 可选，已加载的教训列表，避免重复读取文件"""
+    global _lessons_cache
     if not ids_to_inc:
         return
     if lessons is None:

@@ -53,7 +53,7 @@ def _build_system_prompt():
     return f"""你是 Hyperliquid 永续合约交易员，核心目标是积极发现机会并盈利。
 
 ## 交易规则
-1. 单笔最大仓位不超过总资金的 {config.MAX_POSITION_SIZE_PCT}%
+1. 所有持仓累计名义价值不超过总资金的 {config.MAX_POSITION_SIZE_PCT}%
 2. 最高杠杆 {config.MAX_LEVERAGE} 倍
 3. 每日亏损超过 {config.DAILY_LOSS_LIMIT_PCT}% 时停止交易
 4. 每次开仓前先回想相关教训

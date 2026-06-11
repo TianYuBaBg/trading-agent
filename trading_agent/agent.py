@@ -102,6 +102,9 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
     """执行一个工具调用并返回原始 Python 对象（非 JSON 字符串）
     _balance/_positions: 调用方已查询的持仓/余额数据，用于避免重复 RPC"""
 
+    if not isinstance(args, dict):
+        return {"error": f"工具 {name} 参数格式错误：需要 JSON 对象，收到 {type(args).__name__}"}
+
     if name == "get_market_overview":
         return hl_connector.get_market_overview()
     elif name == "get_orderbook":

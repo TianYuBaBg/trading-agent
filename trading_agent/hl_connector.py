@@ -380,11 +380,13 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
 
         # 所有校验通过后再设置杠杆（避免 size 非法时杠杆被误设）
         # 检查当前杠杆是否已设好，避免不必要的链上交易
+        # 注意：Hyperliquid 的杠杆是按方向独立设置的（long/short 分别存储）
         is_buy = side == "long"
         _need_leverage_update = True
         if isinstance(_positions, list):
             for _p in _positions:
-                if _p.get("coin") == coin and abs(float(_p.get("leverage", 0)) - leverage) < 0.01:
+                if (_p.get("coin") == coin and _p.get("direction") == side
+                        and abs(float(_p.get("leverage", 0)) - leverage) < 0.01):
                     _need_leverage_update = False
                     break
         if _need_leverage_update:

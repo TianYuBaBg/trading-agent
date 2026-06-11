@@ -111,7 +111,7 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
             pass
 
     lesson = {
-        "id": len(lessons) + 1,
+        "id": max((l.get("id", 0) for l in lessons), default=0) + 1,
         "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
         "lesson": lesson_text,
         "tags": tags or [],

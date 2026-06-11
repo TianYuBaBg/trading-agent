@@ -448,7 +448,7 @@ def _save_trade(trade: dict):
         except (json.JSONDecodeError, ValueError):
             trades = []
     trade["open_time"] = datetime.datetime.now().isoformat()
-    trade["id"] = len(trades) + 1
+    trade["id"] = max((t.get("id", 0) for t in trades), default=0) + 1
     trades.append(trade)
     with open(_TRADES_FILE, "w", encoding="utf-8") as f:
         json.dump(trades, f, ensure_ascii=False, indent=2)

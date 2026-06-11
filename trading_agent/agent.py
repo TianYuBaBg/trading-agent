@@ -204,16 +204,16 @@ def run_trade_cycle():
 
     hl_connector.reset_user_state_cache()
     balance = hl_connector.get_balance()
-    positions = hl_connector.get_positions()
-    overview = hl_connector.get_market_overview()
-
-    # ---- 数据质量检查 ----
     if isinstance(balance, str):
         print(f"  [Agent] 获取余额失败，跳过交易周期（{balance}）")
         return {"error": f"获取余额失败：{balance}", "reply": f"获取余额失败：{balance}", "state": "", "tool_results": [], "thought": "", "need_review": False, "lesson_to_save": ""}
+
+    positions = hl_connector.get_positions()
     if isinstance(positions, str):
         print(f"  [Agent] 获取持仓失败，跳过交易周期（{positions}）")
         return {"error": f"获取持仓失败：{positions}", "reply": f"获取持仓失败：{positions}", "state": "", "tool_results": [], "thought": "", "need_review": False, "lesson_to_save": ""}
+
+    overview = hl_connector.get_market_overview()
     if isinstance(overview, str):
         print(f"  [Agent] 获取行情失败，跳过交易周期（{overview}）")
         return {"error": f"获取行情失败：{overview}", "reply": f"获取行情失败：{overview}", "state": "", "tool_results": [], "thought": "", "need_review": False, "lesson_to_save": ""}

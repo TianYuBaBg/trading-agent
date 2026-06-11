@@ -142,7 +142,7 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     # 去重：完整文本相同才视为重复（严格匹配，避免误杀相似但不同的教训）
     clean = lesson_text
     for existing in lessons:
-        if clean == existing.get("lesson", "").strip():
+        if clean == (existing.get("lesson") or "").strip():
             return existing
 
     # 生成向量

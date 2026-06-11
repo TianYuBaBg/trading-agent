@@ -113,8 +113,8 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
     elif name == "get_balance":
         return hl_connector.get_balance()
     elif name == "open_trade":
-        # 检查必填参数
-        coin = args.get("coin")
+        # 检查必填参数（coin 统一转大写，避免大小写不一致导致去重/白名单/API 调用出问题）
+        coin = (args.get("coin") or "").upper()
         side = (args.get("side") or "").lower()
         size = args.get("size")
         if not coin or not side or not size:
@@ -132,7 +132,7 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
             _executed_ops.add(key)
         return result
     elif name == "close_trade":
-        coin = args.get("coin")
+        coin = (args.get("coin") or "").upper()
         if not coin:
             return {"error": "平仓失败：缺少必填参数 coin"}
         key = f"close_trade:{coin}"

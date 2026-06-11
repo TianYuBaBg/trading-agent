@@ -42,7 +42,7 @@ _TOOL_DESCRIPTIONS = {
     "get_balance": "查看账户总资产和可用余额",
     "open_trade": "开仓交易，参数：coin（币种），side（long/short），size（USD金额≥10），leverage（杠杆倍数，默认1）",
     "close_trade": "平仓，参数：coin（币种）",
-    "recall_lessons": "回想过去类似情况学到的教训，参数：context（当前市场情况描述）",
+    "recall_lessons": "回想过去类似情况学到的教训，参数：context（当前市场情况描述），top_k（返回几条，默认3）",
     "add_lesson": "记录一条新教训，参数：lesson（教训内容），tags（标签列表），outcome（结果）",
 }
 
@@ -142,7 +142,7 @@ def _run_tool(name: str, args: dict):
             _executed_ops.add(key)
         return result
     elif name == "recall_lessons":
-        return memory.recall(args.get("context", ""))
+        return memory.recall(args.get("context", ""), int(args.get("top_k") or 3))
     elif name == "add_lesson":
         lesson = args.get("lesson")
         if not lesson:

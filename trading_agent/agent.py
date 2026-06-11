@@ -105,9 +105,9 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
     if name == "get_market_overview":
         return hl_connector.get_market_overview()
     elif name == "get_orderbook":
-        return hl_connector.get_orderbook(args.get("coin", "BTC"), int(args.get("depth") or 5))
+        return hl_connector.get_orderbook((args.get("coin") or "BTC").upper(), int(args.get("depth") or 5))
     elif name == "get_candles":
-        return hl_connector.get_candles(args.get("coin", "BTC"), (args.get("interval") or "1h").lower(), int(args.get("hours") or 24))
+        return hl_connector.get_candles((args.get("coin") or "BTC").upper(), (args.get("interval") or "1h").lower(), int(args.get("hours") or 24))
     elif name == "get_positions":
         return hl_connector.get_positions()
     elif name == "get_balance":

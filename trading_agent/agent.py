@@ -328,9 +328,10 @@ def run_trade_cycle():
 
         # 把所有工具结果送回 AI 继续分析
         messages.append({"role": "assistant", "content": json.dumps(decision, ensure_ascii=False)})
-        # 关键操作结果放前面，避免截断切掉
+        # 只传本轮工具结果（非累积），避免多轮累积导致 8000 字截断切掉新结果
         key_ops = {"open_trade", "close_trade", "transfer_spot_to_perp", "add_lesson"}
-        ordered = sorted(all_results, key=lambda r: (r["tool"] not in key_ops, 0))
+        round_results = all_results[len(all_results) - len(tool_calls):]
+        ordered = sorted(round_results, key=lambda r: (r["tool"] not in key_ops, 0))
         all_results_str = json.dumps(ordered, ensure_ascii=False)[:8000]
         feedback = f"## 工具返回结果\n{all_results_str}\n"
         if had_errors:

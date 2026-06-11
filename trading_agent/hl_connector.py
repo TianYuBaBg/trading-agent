@@ -49,14 +49,14 @@ def _load_wallet():
         cfg = json.load(f)
 
     # 优先使用 API 钱包模式
-    main_addr = cfg.get("main_address", "")
-    api_key = cfg.get("api_key", "")
+    main_addr = cfg.get("main_address") or ""
+    api_key = cfg.get("api_key") or ""
     if main_addr and api_key:
         _wallet_cache = (api_key, main_addr, "api")
         return _wallet_cache
 
     # 降级到直接私钥模式
-    pk = cfg.get("wallet_private_key", "")
+    pk = cfg.get("wallet_private_key") or ""
     if pk:
         _wallet_cache = (pk, pk, "direct")
         return _wallet_cache
@@ -328,7 +328,8 @@ def _get_sz_decimals(coin: str) -> int:
         for asset in (meta.get("universe") or []):
             name = asset.get("name")
             if name:
-                _sz_decimals_cache[name] = asset.get("szDecimals") or 4
+                szd = asset.get("szDecimals")
+                _sz_decimals_cache[name] = szd if szd is not None else 4
         return _sz_decimals_cache.get(coin, 4)
     except Exception:
         return 4

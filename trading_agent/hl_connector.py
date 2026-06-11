@@ -265,7 +265,7 @@ def get_balance():
 
 def _get_fill_price(statuses: list, fallback: float) -> float:
     """从 SDK 响应 statuses 中提取实际成交均价 (avgPx)"""
-    if statuses:
+    if statuses and isinstance(statuses[0], dict):
         fill = statuses[0].get("filled", {})
         if fill and fill.get("avgPx"):
             return float(fill["avgPx"])
@@ -347,7 +347,7 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1):
 
         # 检查订单状态
         statuses = result.get("response", {}).get("data", {}).get("statuses", [])
-        if statuses:
+        if statuses and isinstance(statuses[0], dict):
             first = statuses[0]
             if "error" in first:
                 return f"开仓失败：{first['error']}"
@@ -402,7 +402,7 @@ def close_trade(coin: str, size: float = None):
 
         # 检查平仓订单状态
         statuses = result.get("response", {}).get("data", {}).get("statuses", [])
-        if statuses:
+        if statuses and isinstance(statuses[0], dict):
             first = statuses[0]
             if "error" in first:
                 return f"平仓失败：{first['error']}"

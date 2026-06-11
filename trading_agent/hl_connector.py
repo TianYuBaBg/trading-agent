@@ -9,7 +9,9 @@ Hyperliquid 链上连接器
 
 import datetime
 import json
+import math
 import os
+import time
 from decimal import Decimal
 
 from hyperliquid.info import Info
@@ -165,7 +167,6 @@ def get_candles(coin: str, interval: str = "1h", hours: int = 24):
     hours: 往回看多少小时
     返回：[{"time": "HH:MM", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000}, ...]
     """
-    import time
     info = _ensure_info()
     try:
         now_ms = int(time.time() * 1000)
@@ -309,7 +310,6 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1):
         coin_size = round(size / current_price, sz_decimals)
 
         # 确保最小名义价值 >= $10（Hyperliquid 要求，向上取整）
-        import math
         min_sz = math.ceil(10.0 / current_price * (10 ** sz_decimals)) / (10 ** sz_decimals)
         if coin_size < min_sz:
             coin_size = min_sz
@@ -463,7 +463,6 @@ def get_trade_history(days: int = 7):
     days: 最近几天
     返回：交易列表，每条包含 coin, side, price, size, pnl, time
     """
-    import time
     info = _ensure_info()
     addr = _ensure_wallet_address()
     if not addr:

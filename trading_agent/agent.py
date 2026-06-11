@@ -31,6 +31,7 @@ _TOOL_DESCRIPTIONS = {
     "get_candles": "查看某个币的K线趋势，参数：coin（币种），interval（间隔：1m/5m/15m/1h/4h/1d，默认1h），hours（往回看几小时，默认24）",
     "get_positions": "查看当前持仓及盈亏",
     "get_balance": "查看账户总资产和可用余额",
+    "transfer_spot_to_perp": "把 USDC 从 Spot 转到永续合约账户（开仓前 Perp 余额不足时调用），参数：amount（金额）",
     "open_trade": "开仓交易，参数：coin（币种），side（long/short），size（USD金额≥10），leverage（杠杆倍数，默认1）",
     "close_trade": "平仓，参数：coin（币种）",
     "recall_lessons": "回想过去类似情况学到的教训，参数：context（当前市场情况描述）",
@@ -126,6 +127,8 @@ def _run_tool(name: str, args: dict):
         return memory.recall(args.get("context", ""))
     elif name == "add_lesson":
         return memory.add_lesson(args["lesson"], args.get("tags", []), args.get("outcome", ""))
+    elif name == "transfer_spot_to_perp":
+        return hl_connector.transfer_spot_to_perp(float(args.get("amount", 0)))
     return {"error": f"未知工具: {name}"}
 
 

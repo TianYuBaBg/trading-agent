@@ -12,7 +12,9 @@
 import os
 
 # DeepSeek - 优先使用环境变量，其次使用硬编码（向后兼容）
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-a74b64ec889b4d95adbaf04b8447b885")
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+if not DEEPSEEK_API_KEY:
+    print("  [配置] 警告: DEEPSEEK_API_KEY 未设置，请在环境变量中配置")
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 DEEPSEEK_MODEL = "deepseek-chat"
 

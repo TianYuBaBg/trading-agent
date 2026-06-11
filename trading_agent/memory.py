@@ -89,7 +89,7 @@ def _increment_used(ids_to_inc, lessons=None):
         lessons = _load_lessons()
     for l in lessons:
         if l.get("id") in ids_to_inc:
-            l["used_count"] = l.get("used_count", 0) + 1
+            l["used_count"] = (l.get("used_count") or 0) + 1
     with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
         json.dump(lessons, f, ensure_ascii=False, indent=2)
 
@@ -156,7 +156,7 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
             pass
 
     lesson = {
-        "id": max((l.get("id", 0) for l in lessons), default=0) + 1,
+        "id": max(((l.get("id") or 0) for l in lessons), default=0) + 1,
         "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
         "lesson": lesson_text,
         "tags": tags or [],
@@ -190,7 +190,7 @@ def recall(context_text: str, top_k: int = 3):
     has_any_embedding = any(l.get("embedding") for l in lessons)
     if not has_any_embedding:
         # 使用 heapq.nsmallest 获取 used_count 最小的 top_k 条（性能更好）
-        selected = heapq.nsmallest(top_k, lessons, key=lambda l: l.get("used_count", 0))
+        selected = heapq.nsmallest(top_k, lessons, key=lambda l: l.get("used_count") or 0)
         _increment_used({l.get("id") for l in selected}, lessons=lessons)
         return [
             {"lesson": l["lesson"], "tags": (l.get("tags") or []), "outcome": (l.get("outcome") or "")}
@@ -251,6 +251,6 @@ def get_all_lessons():
     return [
         {"id": l.get("id", i + 1), "date": l.get("date", ""), "lesson": l.get("lesson", ""),
          "tags": (l.get("tags") or []), "outcome": (l.get("outcome") or ""),
-         "used_count": l.get("used_count", 0)}
+         "used_count": l.get("used_count") or 0}
         for i, l in enumerate(lessons)
     ]

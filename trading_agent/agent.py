@@ -207,13 +207,13 @@ def run_trade_cycle():
     # ---- 数据质量检查 ----
     if isinstance(balance, str):
         print(f"  [Agent] 获取余额失败，跳过交易周期（{balance}）")
-        return {"error": f"获取余额失败：{balance}", "reply": f"获取余额失败：{balance}", "state": "", "tool_results": [], "thought": "", "need_review": False}
+        return {"error": f"获取余额失败：{balance}", "reply": f"获取余额失败：{balance}", "state": "", "tool_results": [], "thought": "", "need_review": False, "lesson_to_save": ""}
     if isinstance(positions, str):
         print(f"  [Agent] 获取持仓失败，跳过交易周期（{positions}）")
-        return {"error": f"获取持仓失败：{positions}", "reply": f"获取持仓失败：{positions}", "state": "", "tool_results": [], "thought": "", "need_review": False}
+        return {"error": f"获取持仓失败：{positions}", "reply": f"获取持仓失败：{positions}", "state": "", "tool_results": [], "thought": "", "need_review": False, "lesson_to_save": ""}
     if isinstance(overview, str):
         print(f"  [Agent] 获取行情失败，跳过交易周期（{overview}）")
-        return {"error": f"获取行情失败：{overview}", "reply": f"获取行情失败：{overview}", "state": "", "tool_results": [], "thought": "", "need_review": False}
+        return {"error": f"获取行情失败：{overview}", "reply": f"获取行情失败：{overview}", "state": "", "tool_results": [], "thought": "", "need_review": False, "lesson_to_save": ""}
     # 风控检查：DAILY_LOSS_LIMIT_PCT < 0 表示启用风控（-5 表示日亏 5% 停止）
     if config.DAILY_LOSS_LIMIT_PCT < 0:
         wallet_value = balance.get("wallet_value", 0)
@@ -387,6 +387,7 @@ def run_trade_cycle():
         "need_review": need_review,
         "tool_results": all_results,
         "state": state_text,
+        "lesson_to_save": lesson_to_save,
     }
 
 

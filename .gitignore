@@ -1,6 +1,9 @@
 data/config.json
+data/lessons.json
+data/trades.json
 __pycache__/
 *.pyc
 .env
 .hf_token
 hyperliquid-sdk/
+trading_agent/data/config.json

@@ -4,10 +4,15 @@
 使用方式：
 1. 复制 config.example.json 为 data/config.json
 2. 填入你的钱包私钥和 DeepSeek API key
+
+也可通过环境变量配置：
+  DEEPSEEK_API_KEY 覆盖 API key
 """
 
-# DeepSeek
-DEEPSEEK_API_KEY = "sk-a74b64ec889b4d95adbaf04b8447b885"
+import os
+
+# DeepSeek - 优先使用环境变量，其次使用硬编码（向后兼容）
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "sk-a74b64ec889b4d95adbaf04b8447b885")
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
 DEEPSEEK_MODEL = "deepseek-chat"
 

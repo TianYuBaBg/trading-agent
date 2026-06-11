@@ -65,6 +65,13 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     with open(_LESSONS_FILE, encoding="utf-8") as f:
         lessons = json.load(f)
 
+    # 去重：前 20 字相同，或新教训包含在已有教训中（反之亦然）
+    short = lesson_text.strip()[:20]
+    for existing in lessons:
+        existing_text = existing.get("lesson", "")
+        if short == existing_text[:20] or short in existing_text or existing_text[:20] in lesson_text:
+            return existing
+
     # 生成向量
     model = _get_model()
     embedding = []

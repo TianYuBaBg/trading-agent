@@ -104,17 +104,24 @@ def _run_tool(name: str, args: dict):
     elif name == "get_balance":
         return hl_connector.get_balance()
     elif name == "open_trade":
+        # 检查币种白名单
+        if config.ALLOWED_COINS and args.get("coin") not in config.ALLOWED_COINS:
+            return {"error": f"{args['coin']} 不在允许交易列表(ALLOWED_COINS)中"}
         key = f"open_trade:{args['coin']}"
         if key in _executed_ops:
             return {"warning": f"已在当前周期对 {args['coin']} 开过仓，操作已跳过"}
-        _executed_ops.add(key)
-        return hl_connector.open_trade(args["coin"], args["side"], float(args["size"]), int(args.get("leverage", 1)))
+        result = hl_connector.open_trade(args["coin"], args["side"], float(args["size"]), int(args.get("leverage", 1)))
+        if isinstance(result, dict) and result.get("status") == "已开仓":
+            _executed_ops.add(key)
+        return result
     elif name == "close_trade":
         key = f"close_trade:{args['coin']}"
         if key in _executed_ops:
             return {"warning": f"已在当前周期对 {args['coin']} 平过仓，操作已跳过"}
-        _executed_ops.add(key)
-        return hl_connector.close_trade(args["coin"])
+        result = hl_connector.close_trade(args["coin"])
+        if isinstance(result, dict) and result.get("status") == "已平仓":
+            _executed_ops.add(key)
+        return result
     elif name == "recall_lessons":
         return memory.recall(args.get("context", ""))
     elif name == "add_lesson":

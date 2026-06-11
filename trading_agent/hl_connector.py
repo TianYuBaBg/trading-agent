@@ -16,6 +16,8 @@ from hyperliquid.exchange import Exchange
 from hyperliquid.utils import constants
 from eth_account import Account
 
+from trading_agent import config
+
 # 读取钱包配置
 _CONFIG_PATH = os.path.join(os.path.dirname(__file__), "data", "config.json")
 
@@ -55,6 +57,7 @@ def _load_wallet():
 _info = None
 _exchange = None
 _wallet_address = None
+_sz_decimals_cache = {}
 
 
 def _ensure_info():
@@ -251,13 +254,18 @@ def get_balance():
 # ========== 交易工具 ==========
 
 def _get_sz_decimals(coin: str) -> int:
-    """获取币种的数量精度（szDecimals）"""
+    """获取币种的数量精度（szDecimals），结果缓存"""
+    global _sz_decimals_cache
+    if coin in _sz_decimals_cache:
+        return _sz_decimals_cache[coin]
     info = _ensure_info()
     try:
         meta = info.meta()
         for asset in meta.get("universe", []):
             if asset["name"] == coin:
+                _sz_decimals_cache[coin] = asset["szDecimals"]
                 return asset["szDecimals"]
+        _sz_decimals_cache[coin] = 4
         return 4
     except Exception:
         return 4
@@ -294,15 +302,35 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1):
         if coin_size < min_sz:
             coin_size = min_sz
 
+        # 检查总仓位是否超过限制
+        try:
+            bal = get_balance()
+            total_value = bal.get("wallet_value", 0)
+            pos_list = get_positions()
+            existing_notional = sum(abs(p["size"]) * p.get("entry_px", 0) for p in pos_list if p.get("coin") != coin)
+            new_notional = coin_size * current_price
+            total_notional = existing_notional + new_notional
+            max_allowed = total_value * (config.MAX_POSITION_SIZE_PCT / 100)
+            if total_notional > max_allowed:
+                max_add = max(0, max_allowed - existing_notional)
+                return f"开仓失败：总仓位 ${total_notional:.1f} 超过限制 ${max_allowed:.1f}（{config.MAX_POSITION_SIZE_PCT}%），最多还能开 ${max_add:.1f}"
+        except Exception:
+            pass
+
         is_buy = side == "long"
 
         # 市价单（IOC = Immediate-or-Cancel，市价吃单）
         result = ex.market_open(coin, is_buy, coin_size, current_price, slippage=0.01)
 
-        # 检查订单是否被拒绝（如低于最小 $10）
+        # 检查订单状态
         statuses = result.get("response", {}).get("data", {}).get("statuses", [])
-        if statuses and "error" in statuses[0]:
-            return f"开仓失败：{statuses[0]['error']}"
+        if statuses:
+            first = statuses[0]
+            if "error" in first:
+                return f"开仓失败：{first['error']}"
+            if "resting" in first:
+                return f"开仓未成交：订单未立即成交（挂单中）"
+            # filled 或未知状态都继续（filled 有 totalSz/avgPx）
 
         trade_record = {
             "coin": coin,
@@ -347,10 +375,14 @@ def close_trade(coin: str, size: float = None):
         close_sz = abs(pos["size"]) if size is None else size
         result = ex.market_close(coin, close_sz, current_price, slippage=0.01)
 
-        # 检查关闭订单是否被拒绝
+        # 检查平仓订单状态
         statuses = result.get("response", {}).get("data", {}).get("statuses", [])
-        if statuses and "error" in statuses[0]:
-            return f"平仓失败：{statuses[0]['error']}"
+        if statuses:
+            first = statuses[0]
+            if "error" in first:
+                return f"平仓失败：{first['error']}"
+            if "resting" in first:
+                return f"平仓未成交：订单未立即成交（挂单中）"
 
         # 计算盈亏
         pnl = (current_price - pos["entry_px"]) * close_sz

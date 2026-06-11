@@ -539,7 +539,7 @@ def _load_trades():
         with open(_TRADES_FILE, encoding="utf-8") as f:
             trades = json.load(f)
         if isinstance(trades, list):
-            return trades
+            return [t for t in trades if isinstance(t, dict)]
     except (json.JSONDecodeError, ValueError):
         pass
     # 文件损坏，备份

@@ -77,7 +77,7 @@ def _build_system_prompt():
     ],
     "reply": "你要回复的话，没有就说空",
     "need_review": false,
-    "lesson_to_save": ""
+    "lesson_to_save": ""  // 也可传对象 {"text": "教训", "tags": ["btc"], "outcome": "亏损2%"}
 }}
 
 流程说明：
@@ -397,7 +397,12 @@ def run_trade_cycle():
 
     # ---- 第 4 步：保存教训 ----
     if lesson_to_save:
-        memory.add_lesson(lesson_to_save)
+        if isinstance(lesson_to_save, dict):
+            text = (lesson_to_save.get("text") or lesson_to_save.get("lesson") or "").strip()
+            if text:
+                memory.add_lesson(text, lesson_to_save.get("tags"), lesson_to_save.get("outcome") or "")
+        elif isinstance(lesson_to_save, str):
+            memory.add_lesson(lesson_to_save)
 
     return {
         "thought": final_thought,

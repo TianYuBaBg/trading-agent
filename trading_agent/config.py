@@ -10,9 +10,20 @@
 """
 
 import os
+import json
 
-# DeepSeek - 优先使用环境变量，其次使用硬编码（向后兼容）
+# DeepSeek - 环境变量 > data/config.json > 报错
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+if not DEEPSEEK_API_KEY:
+    # fallback: 从 data/config.json 读取
+    _cfg_path = os.path.join(os.path.dirname(__file__), "data", "config.json")
+    if os.path.exists(_cfg_path):
+        try:
+            with open(_cfg_path, encoding="utf-8") as _f:
+                _cfg = json.load(_f)
+            DEEPSEEK_API_KEY = _cfg.get("deepseek_api_key", "")
+        except Exception:
+            pass
 if not DEEPSEEK_API_KEY:
     print("  [配置] 警告: DEEPSEEK_API_KEY 未设置，请在环境变量中配置")
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"

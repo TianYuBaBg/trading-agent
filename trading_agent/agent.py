@@ -59,10 +59,11 @@ def _build_system_prompt():
 3. 每日亏损超过 {config.DAILY_LOSS_LIMIT_PCT}% 时停止交易
 4. 每次开仓前先回想相关教训
 5. 平仓后复盘并记录教训
-6. **核心目标：盈利。积极寻找交易机会，小仓位试单、发现趋势加仓**
-7. 小账户可用高杠杆（3x）提高资金利用率，每笔赚 2-5% 就很好
-8. 不要只会等待，没有明确风险信号就该尝试入场
-9. 亏损不可怕，可怕的是不行动。小亏止损，大赚持有
+6. 开仓前如果 Perp 余额不足，先用 transfer_spot_to_perp 把 USDC 从 Spot 转到 Perp
+7. **核心目标：盈利。积极寻找交易机会，小仓位试单、发现趋势加仓**
+8. 小账户可用高杠杆（3x）提高资金利用率，每笔赚 2-5% 就很好
+9. 不要只会等待，没有明确风险信号就该尝试入场
+10. 亏损不可怕，可怕的是不行动。小亏止损，大赚持有
 
 ## 可用工具
 {json.dumps(_TOOL_DESCRIPTIONS, ensure_ascii=False, indent=2)}
@@ -222,6 +223,7 @@ def run_trade_cycle():
             break  # AI 做出最终决策
 
         # 执行工具
+        had_errors = []
         for tc in tool_calls:
             name = tc.get("name", "")
             args = tc.get("args", {})
@@ -229,11 +231,20 @@ def run_trade_cycle():
             result = _run_tool(name, args)
             print(f"  [Agent] 结果: {str(result)[:80]}...")
             all_results.append({"tool": name, "result": result})
+            # 检测工具是否返回错误
+            if isinstance(result, str) and ("失败" in result or "错误" in result):
+                had_errors.append(f"{name}: {result[:100]}")
+            elif isinstance(result, dict) and result.get("error"):
+                had_errors.append(f"{name}: {result['error'][:100]}")
 
         # 把所有工具结果送回 AI 继续分析
         messages.append({"role": "assistant", "content": json.dumps(decision, ensure_ascii=False)})
         all_results_str = json.dumps(all_results, ensure_ascii=False)[:3000]
-        messages.append({"role": "user", "content": f"## 工具返回结果\n{all_results_str}\n## 根据以上数据做最终决策。开仓用 open_trade，平仓用 close_trade，不交易则 tool_calls 留空。"})
+        feedback = f"## 工具返回结果\n{all_results_str}\n"
+        if had_errors:
+            feedback += "\n⚠️ 注意：以上工具有失败的情况，请仔细检查失败原因，不要假设操作已成功执行。\n"
+        feedback += "\n## 根据以上数据做最终决策。开仓用 open_trade，平仓用 close_trade，不交易则 tool_calls 留空。"
+        messages.append({"role": "user", "content": feedback})
 
     # ---- 第 4 步：保存教训 ----
     if lesson_to_save:

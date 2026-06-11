@@ -12,7 +12,7 @@
 
 import json
 import datetime
-from openai import OpenAI
+from openai import OpenAI, AuthenticationError
 from trading_agent import config
 from trading_agent import hl_connector
 from trading_agent import memory
@@ -282,6 +282,17 @@ def run_trade_cycle():
             decision = _extract_json(resp.choices[0].message.content)
             if "error" in decision:
                 raise ValueError(decision["error"])
+        except AuthenticationError as e:
+            # 认证错误重试也无效，直接返回
+            return {
+                "error": f"API 认证失败: {e}",
+                "reply": f"API 认证失败: {e}",
+                "state": state_text,
+                "tool_results": all_results,
+                "thought": "",
+                "need_review": False,
+                "lesson_to_save": "",
+            }
         except Exception as e:
             if _round >= max_rounds - 1:
                 return {

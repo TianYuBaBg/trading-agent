@@ -53,7 +53,7 @@ def _load_lessons():
         with open(_LESSONS_FILE, encoding="utf-8") as f:
             data = json.load(f)
         if isinstance(data, list):
-            return data
+            return [l for l in data if isinstance(l, dict)]
     except (json.JSONDecodeError, ValueError):
         pass
     # 文件损坏或非 list，备份并重建

@@ -107,7 +107,7 @@ def _run_tool(name: str, args: dict):
     elif name == "get_orderbook":
         return hl_connector.get_orderbook(args.get("coin", "BTC"))
     elif name == "get_candles":
-        return hl_connector.get_candles(args.get("coin", "BTC"), args.get("interval", "1h"), int(args.get("hours", 24)))
+        return hl_connector.get_candles(args.get("coin", "BTC"), args.get("interval", "1h"), int(args.get("hours") or 24))
     elif name == "get_positions":
         return hl_connector.get_positions()
     elif name == "get_balance":
@@ -127,7 +127,7 @@ def _run_tool(name: str, args: dict):
         key = f"open_trade:{coin}"
         if key in _executed_ops:
             return {"warning": f"已在当前周期对 {coin} 开过仓，操作已跳过"}
-        result = hl_connector.open_trade(coin, side, float(size), int(args.get("leverage", 1)))
+        result = hl_connector.open_trade(coin, side, float(size), int(args.get("leverage") or 1))
         if isinstance(result, dict) and result.get("status") == "已开仓":
             _executed_ops.add(key)
         return result
@@ -153,7 +153,7 @@ def _run_tool(name: str, args: dict):
             tags = [t.strip() for t in tags.split(",") if t.strip()]
         return memory.add_lesson(lesson, tags, args.get("outcome", ""))
     elif name == "transfer_spot_to_perp":
-        return hl_connector.transfer_spot_to_perp(float(args.get("amount", 0)))
+        return hl_connector.transfer_spot_to_perp(float(args.get("amount") or 0))
     return {"error": f"未知工具: {name}"}
 
 
@@ -226,7 +226,10 @@ def run_trade_cycle():
             )
             decision = _extract_json(resp.choices[0].message.content)
         except Exception as e:
-            return {"error": f"AI 决策失败: {e}", "state": state_text}
+            if _round >= max_rounds - 1:
+                return {"error": f"AI 决策失败: {e}", "state": state_text}
+            messages.append({"role": "user", "content": f"JSON 解析错误: {e}，请重新输出有效的 JSON 对象"})
+            continue
 
         final_thought = decision.get("thought", "")
         final_reply = decision.get("reply", "")

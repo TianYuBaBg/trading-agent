@@ -243,7 +243,7 @@ def run_trade_cycle():
     state_text = f"""
 当前账户：{json.dumps(balance, ensure_ascii=False)}
 当前持仓：{json.dumps(positions, ensure_ascii=False)}
-市场概况：{json.dumps(overview[:20] if isinstance(overview, list) else overview, ensure_ascii=False)}
+市场概况：{json.dumps(overview[:20], ensure_ascii=False)}
 """
 
     # ---- 构造自然语言召回上下文（向量搜索用，不用 JSON）----
@@ -251,11 +251,14 @@ def run_trade_cycle():
     if isinstance(balance, dict):
         recall_context_parts.append(f"余额 ${balance.get('wallet_value', 0)}，可用 ${balance.get('available', 0)}")
     if isinstance(positions, list) and positions:
-        pos_desc = "; ".join(f"{p['coin']} {p['direction']} {abs(p['size'])}张 盈亏${p['pnl']}" for p in positions)
+        pos_desc = "; ".join(
+            f"{p.get('coin', '?')} {p.get('direction', '?')} {abs(p.get('size', 0))}张 盈亏${p.get('pnl', 0)}"
+            for p in positions
+        )
         recall_context_parts.append(f"持仓: {pos_desc}")
     if isinstance(overview, list):
         top_coins = overview[:5]
-        mkt_desc = "; ".join(f"{c['coin']} ${c['mid']}" for c in top_coins)
+        mkt_desc = "; ".join(f"{c.get('coin', '?')} ${c.get('mid', 0)}" for c in top_coins)
         recall_context_parts.append(f"行情: {mkt_desc}")
     recall_context = "，".join(recall_context_parts) or state_text
 
@@ -373,7 +376,19 @@ def run_trade_cycle():
         round_results = all_results[results_before:]
         # 按优先级排序：交易操作 > 其他操作，同类按工具名字典序
         ordered = sorted(round_results, key=lambda r: (0 if r["tool"] in key_ops else 1, r["tool"]))
-        all_results_str = json.dumps(ordered, ensure_ascii=False)[:8000]
+        all_results_str = json.dumps(ordered, ensure_ascii=False)
+        if len(all_results_str) > 8000:
+            # 在完整 item 边界截断，避免切在 JSON 字符串中间
+            safe = []
+            size = 0
+            for item in ordered:
+                s = json.dumps(item, ensure_ascii=False)
+                needed = len(s) + (2 if safe else 0)
+                if size + needed > 8000:
+                    break
+                safe.append(s)
+                size += needed
+            all_results_str = "[" + ",".join(safe) + "]"
         feedback = f"## 工具返回结果\n{all_results_str}\n"
         if had_errors:
             feedback += "\n⚠️ 以下工具调用失败，请仔细检查，不要假设操作已成功：\n" + "\n".join(had_errors) + "\n"

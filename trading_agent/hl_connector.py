@@ -130,6 +130,8 @@ def get_market_overview():
                 item["volume"] = float(ctx.get("dayNtlVlm", 0))
                 item["funding"] = float(ctx.get("funding", 0))
             overview.append(item)
+        # 按成交量降序排列，流动性高的币种在前
+        overview.sort(key=lambda x: x.get("volume", 0), reverse=True)
         return overview
     except Exception as e:
         return f"获取行情失败：{e}"

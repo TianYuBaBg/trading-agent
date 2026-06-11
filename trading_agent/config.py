@@ -22,8 +22,8 @@ if not DEEPSEEK_API_KEY:
             with open(_cfg_path, encoding="utf-8") as _f:
                 _cfg = json.load(_f)
             DEEPSEEK_API_KEY = _cfg.get("deepseek_api_key", "")
-        except Exception:
-            pass
+        except Exception as _e:
+            print(f"  [配置] 读取 data/config.json 失败: {_e}")
 if not DEEPSEEK_API_KEY:
     print("  [配置] 警告: DEEPSEEK_API_KEY 未设置，请在环境变量中配置")
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"

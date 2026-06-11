@@ -369,10 +369,11 @@ def close_trade(coin: str, size: float = None):
         # 获取当前仓位
         positions = get_positions()
         pos = None
-        for p in positions:
-            if p["coin"] == coin:
-                pos = p
-                break
+        if isinstance(positions, list):
+            for p in positions:
+                if p["coin"] == coin:
+                    pos = p
+                    break
         if not pos:
             return f"没有 {coin} 的持仓"
 

@@ -27,7 +27,7 @@ if not DEEPSEEK_API_KEY:
 if not DEEPSEEK_API_KEY:
     print("  [配置] 警告: DEEPSEEK_API_KEY 未设置，请在环境变量中配置")
 DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-DEEPSEEK_MODEL = "deepseek-chat"
+DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
 
 # ========== 安全限制（防止 AI 乱来）==========
 # 单笔最大仓位：钱包总资金的百分比

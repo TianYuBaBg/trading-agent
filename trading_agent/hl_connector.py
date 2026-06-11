@@ -442,8 +442,11 @@ def _save_trade(trade: dict):
     os.makedirs(os.path.dirname(_TRADES_FILE), exist_ok=True)
     trades = []
     if os.path.exists(_TRADES_FILE):
-        with open(_TRADES_FILE, encoding="utf-8") as f:
-            trades = json.load(f)
+        try:
+            with open(_TRADES_FILE, encoding="utf-8") as f:
+                trades = json.load(f)
+        except (json.JSONDecodeError, ValueError):
+            trades = []
     trade["open_time"] = datetime.datetime.now().isoformat()
     trade["id"] = len(trades) + 1
     trades.append(trade)
@@ -455,8 +458,11 @@ def _update_trade_close(coin: str, exit_price: float, pnl: float):
     """平仓后更新交易记录：标记最近一笔该币种的开仓交易为已平仓"""
     if not os.path.exists(_TRADES_FILE):
         return
-    with open(_TRADES_FILE, encoding="utf-8") as f:
-        trades = json.load(f)
+    try:
+        with open(_TRADES_FILE, encoding="utf-8") as f:
+            trades = json.load(f)
+    except (json.JSONDecodeError, ValueError):
+        trades = []
     # 标记该币种所有未平仓记录为已平仓（包括历史幻影单）
     now = datetime.datetime.now().isoformat()
     for t in trades:

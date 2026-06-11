@@ -72,11 +72,13 @@ def _cosine_similarity(a, b):
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-10))
 
 
-def _increment_used(ids_to_inc):
-    """将指定 id 的教训 used_count 加 1，写回文件"""
+def _increment_used(ids_to_inc, lessons=None):
+    """将指定 id 的教训 used_count 加 1，写回文件
+    lessons: 可选，已加载的教训列表，避免重复读取文件"""
     if not ids_to_inc:
         return
-    lessons = _load_lessons()
+    if lessons is None:
+        lessons = _load_lessons()
     for l in lessons:
         if l.get("id") in ids_to_inc:
             l["used_count"] = l.get("used_count", 0) + 1
@@ -181,7 +183,7 @@ def recall(context_text: str, top_k: int = 3):
     if not has_any_embedding:
         # 使用 heapq.nsmallest 获取 used_count 最小的 top_k 条（性能更好）
         selected = heapq.nsmallest(top_k, lessons, key=lambda l: l.get("used_count", 0))
-        _increment_used({l.get("id") for l in selected})
+        _increment_used({l.get("id") for l in selected}, lessons=lessons)
         return [
             {"lesson": l["lesson"], "tags": l.get("tags", []), "outcome": l.get("outcome", "")}
             for l in selected
@@ -214,7 +216,7 @@ def recall(context_text: str, top_k: int = 3):
                     fallback.sort(key=lambda x: -x[0])
                     top.extend(fallback[:top_k - len(top)])
 
-                _increment_used({l.get("id") for _, l in top})
+                _increment_used({l.get("id") for _, l in top}, lessons=lessons)
                 return [
                     {"lesson": l["lesson"], "tags": l.get("tags", []), "outcome": l.get("outcome", ""),
                      "similarity": round(s, 3)}
@@ -228,7 +230,7 @@ def recall(context_text: str, top_k: int = 3):
     scored = [(_keyword_score(l, context_text, ctx_chinese), l) for l in lessons]
     scored.sort(key=lambda x: -x[0])
     top_ids = {l.get("id") for _, l in scored[:top_k]}
-    _increment_used(top_ids)
+    _increment_used(top_ids, lessons=lessons)
     return [
         {"lesson": l["lesson"], "tags": l.get("tags", []), "outcome": l.get("outcome", "")}
         for _, l in scored[:top_k]

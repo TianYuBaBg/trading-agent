@@ -450,7 +450,7 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
         return f"开仓失败：{e}"
 
 
-def close_trade(coin: str, size: float = None, _positions=None):
+def close_trade(coin: str, size=None, _positions=None):
     """
     平仓
     coin: "BTC"

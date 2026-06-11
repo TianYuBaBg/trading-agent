@@ -135,6 +135,7 @@ def recall(context_text: str, top_k: int = 3):
     返回：最相关的教训列表，每条包含 lesson, tags, outcome
     """
     _ensure_file()
+    context_text = context_text or ""
     with open(_LESSONS_FILE, encoding="utf-8") as f:
         lessons = json.load(f)
 

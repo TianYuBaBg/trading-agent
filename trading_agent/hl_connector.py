@@ -7,6 +7,7 @@ Hyperliquid 链上连接器
 - 开仓、平仓、设止损
 """
 
+import datetime
 import json
 import os
 from decimal import Decimal
@@ -427,7 +428,6 @@ _TRADES_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", 
 
 def _save_trade(trade: dict):
     """保存一笔交易到本地"""
-    import datetime
     trades = []
     if os.path.exists(_TRADES_FILE):
         with open(_TRADES_FILE, encoding="utf-8") as f:
@@ -441,19 +441,18 @@ def _save_trade(trade: dict):
 
 def _update_trade_close(coin: str, exit_price: float, pnl: float):
     """平仓后更新交易记录：标记最近一笔该币种的开仓交易为已平仓"""
-    import datetime
     if not os.path.exists(_TRADES_FILE):
         return
     with open(_TRADES_FILE, encoding="utf-8") as f:
         trades = json.load(f)
-    # 从后往前找最近一笔该币种未平仓的记录
-    for t in reversed(trades):
+    # 标记该币种所有未平仓记录为已平仓（包括历史幻影单）
+    now = datetime.datetime.now().isoformat()
+    for t in trades:
         if t.get("coin") == coin and not t.get("close_time"):
-            t["close_time"] = datetime.datetime.now().isoformat()
+            t["close_time"] = now
             t["exit_price"] = exit_price
             t["pnl"] = round(pnl, 2)
             t["status"] = "closed"
-            break
     with open(_TRADES_FILE, "w", encoding="utf-8") as f:
         json.dump(trades, f, ensure_ascii=False, indent=2)
 

@@ -284,7 +284,15 @@ def run_trade_cycle():
                 raise ValueError(decision["error"])
         except Exception as e:
             if _round >= max_rounds - 1:
-                return {"error": f"AI 决策失败: {e}", "state": state_text}
+                return {
+                    "error": f"AI 决策失败: {e}",
+                    "reply": f"AI 决策失败: {e}",  # 确保 reply 字段存在，避免调用方 KeyError
+                    "state": state_text,
+                    "tool_results": all_results,
+                    "thought": "",
+                    "need_review": False,
+                    "lesson_to_save": "",
+                }
             messages.append({"role": "user", "content": f"输出格式错误: {e}，请重新输出有效的 JSON 对象"})
             continue
 

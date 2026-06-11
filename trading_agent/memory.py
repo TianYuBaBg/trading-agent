@@ -17,6 +17,7 @@ import os
 import re
 import shutil
 import datetime
+import heapq
 import numpy as np
 
 _LESSONS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "lessons.json")
@@ -164,7 +165,6 @@ def recall(context_text: str, top_k: int = 3):
     has_any_embedding = any(l.get("embedding") for l in lessons)
     if not has_any_embedding:
         # 使用 heapq.nsmallest 获取 used_count 最小的 top_k 条（性能更好）
-        import heapq
         selected = heapq.nsmallest(top_k, lessons, key=lambda l: l.get("used_count", 0))
         _increment_used({l.get("id") for l in selected})
         return [

@@ -439,6 +439,7 @@ _TRADES_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", 
 
 def _save_trade(trade: dict):
     """保存一笔交易到本地"""
+    os.makedirs(os.path.dirname(_TRADES_FILE), exist_ok=True)
     trades = []
     if os.path.exists(_TRADES_FILE):
         with open(_TRADES_FILE, encoding="utf-8") as f:

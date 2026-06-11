@@ -147,15 +147,15 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
                 _executed_ops.add(key)
         return result
     elif name == "recall_lessons":
-        return memory.recall(args.get("context", ""), int(args.get("top_k") or 3))
+        return memory.recall(args.get("context") or "", int(args.get("top_k") or 3))
     elif name == "add_lesson":
         lesson = args.get("lesson")
         if not lesson or not isinstance(lesson, str):
             return {"error": "记录教训失败：缺少必填参数 lesson 或类型错误（需要字符串）"}
-        tags = args.get("tags", [])
+        tags = args.get("tags") or []
         if isinstance(tags, str):
             tags = [t.strip() for t in tags.split(",") if t.strip()]
-        result = memory.add_lesson(lesson, tags, args.get("outcome", ""))
+        result = memory.add_lesson(lesson, tags, args.get("outcome") or "")
         if result is None:
             return {"status": "未保存", "reason": "教训内容过短（少于5字符）或重复"}
         return {"status": "已保存", "lesson": result}
@@ -459,7 +459,7 @@ def run_review():
             for l in lessons_list:
                 text = l.get("text", "")
                 if text:
-                    tags = l.get("tags", [])
+                    tags = l.get("tags") or []
                     if isinstance(tags, str):
                         tags = [t.strip() for t in tags.split(",") if t.strip()]
                     memory.add_lesson(text, tags, l.get("outcome", ""))

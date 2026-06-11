@@ -98,7 +98,7 @@ def _keyword_score(lesson: dict, context_text: str, ctx_chinese: set) -> float:
     """计算一条教训与上下文文本的关键词匹配分数"""
     score = 0
     lesson_lower = lesson.get("lesson", "").lower()
-    for tag in lesson.get("tags", []):
+    for tag in (lesson.get("tags") or []):
         if tag.lower() in context_text.lower():
             score += 2
     for kw in set(context_text.lower().split()):
@@ -193,7 +193,7 @@ def recall(context_text: str, top_k: int = 3):
         selected = heapq.nsmallest(top_k, lessons, key=lambda l: l.get("used_count", 0))
         _increment_used({l.get("id") for l in selected}, lessons=lessons)
         return [
-            {"lesson": l["lesson"], "tags": l.get("tags", []), "outcome": l.get("outcome", "")}
+            {"lesson": l["lesson"], "tags": (l.get("tags") or []), "outcome": (l.get("outcome") or "")}
             for l in selected
         ]
 
@@ -226,7 +226,7 @@ def recall(context_text: str, top_k: int = 3):
 
                 _increment_used({l.get("id") for _, l in top}, lessons=lessons)
                 return [
-                    {"lesson": l["lesson"], "tags": l.get("tags", []), "outcome": l.get("outcome", ""),
+                    {"lesson": l["lesson"], "tags": (l.get("tags") or []), "outcome": (l.get("outcome") or ""),
                      "similarity": round(s, 3)}
                     for s, l in top
                 ]
@@ -240,7 +240,7 @@ def recall(context_text: str, top_k: int = 3):
     top_ids = {l.get("id") for _, l in scored[:top_k]}
     _increment_used(top_ids, lessons=lessons)
     return [
-        {"lesson": l["lesson"], "tags": l.get("tags", []), "outcome": l.get("outcome", "")}
+        {"lesson": l["lesson"], "tags": (l.get("tags") or []), "outcome": (l.get("outcome") or "")}
         for _, l in scored[:top_k]
     ]
 
@@ -250,7 +250,7 @@ def get_all_lessons():
     lessons = _load_lessons()
     return [
         {"id": l.get("id", i + 1), "date": l.get("date", ""), "lesson": l.get("lesson", ""),
-         "tags": l.get("tags", []), "outcome": l.get("outcome", ""),
+         "tags": (l.get("tags") or []), "outcome": (l.get("outcome") or ""),
          "used_count": l.get("used_count", 0)}
         for i, l in enumerate(lessons)
     ]

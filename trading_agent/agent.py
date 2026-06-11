@@ -234,6 +234,7 @@ def run_trade_cycle():
                         "need_review": True,
                         "tool_results": [],
                         "state": f"余额：{json.dumps(balance, ensure_ascii=False)}\n今日盈亏：{today_pnl:.2f}",
+                        "lesson_to_save": "",
                     }
 
     state_text = f"""

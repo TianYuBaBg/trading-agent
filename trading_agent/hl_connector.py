@@ -11,6 +11,7 @@ import datetime
 import json
 import math
 import os
+import shutil
 import time
 
 from hyperliquid.info import Info
@@ -511,16 +512,33 @@ def close_trade(coin: str, size: float = None, _positions=None):
 _TRADES_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "trades.json")
 
 
+def _load_trades():
+    """读取 trades.json，文件损坏时备份并重建"""
+    if not os.path.exists(_TRADES_FILE):
+        return []
+    try:
+        with open(_TRADES_FILE, encoding="utf-8") as f:
+            trades = json.load(f)
+        if isinstance(trades, list):
+            return trades
+    except (json.JSONDecodeError, ValueError):
+        pass
+    # 文件损坏，备份
+    backup = _TRADES_FILE + ".bak"
+    try:
+        shutil.copy2(_TRADES_FILE, backup)
+    except Exception:
+        pass
+    print(f"  [交易记录] trades.json 损坏，已备份到 {backup}，重新创建")
+    with open(_TRADES_FILE, "w", encoding="utf-8") as f:
+        json.dump([], f, ensure_ascii=False, indent=2)
+    return []
+
+
 def _save_trade(trade: dict):
     """保存一笔交易到本地"""
     os.makedirs(os.path.dirname(_TRADES_FILE), exist_ok=True)
-    trades = []
-    if os.path.exists(_TRADES_FILE):
-        try:
-            with open(_TRADES_FILE, encoding="utf-8") as f:
-                trades = json.load(f)
-        except (json.JSONDecodeError, ValueError):
-            trades = []
+    trades = _load_trades()
     trade["open_time"] = datetime.datetime.now().isoformat()
     trade["id"] = max((t.get("id", 0) for t in trades), default=0) + 1
     trades.append(trade)
@@ -532,11 +550,7 @@ def _update_trade_close(coin: str, exit_price: float, pnl: float):
     """平仓后更新交易记录：标记最近一笔该币种的开仓交易为已平仓"""
     if not os.path.exists(_TRADES_FILE):
         return
-    try:
-        with open(_TRADES_FILE, encoding="utf-8") as f:
-            trades = json.load(f)
-    except (json.JSONDecodeError, ValueError):
-        trades = []
+    trades = _load_trades()
     # 标记该币种最近一笔未平仓记录为已平仓
     now = datetime.datetime.now().isoformat()
     for t in reversed(trades):

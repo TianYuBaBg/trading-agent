@@ -300,6 +300,15 @@ def run_trade_cycle():
                 result = _run_tool(name, args, _balance=balance, _positions=positions)
             except Exception as e:
                 result = {"error": f"工具 {name} 执行异常: {e}"}
+            # 交易成功后刷新 balance/positions，避免后续仓位检查用旧数据
+            refreshed = False
+            if isinstance(result, dict) and result.get("status") in ("已开仓", "已平仓"):
+                balance = hl_connector.get_balance()
+                positions = hl_connector.get_positions()
+                refreshed = True
+            elif name == "transfer_spot_to_perp" and isinstance(result, dict) and result.get("status") == "ok":
+                balance = hl_connector.get_balance()
+                refreshed = True
             print(f"  [Agent] 结果: {str(result)[:80]}...")
             all_results.append({"tool": name, "result": result})
             # 检测工具是否返回错误（工具成功时均返回 dict，字符串 = 错误）

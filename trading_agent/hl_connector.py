@@ -178,6 +178,10 @@ def get_candles(coin: str, interval: str = "1h", hours: int = 24):
     """
     info = _ensure_info()
     try:
+        # 校验 interval，无效值降级为 1h
+        valid_intervals = {"1m", "5m", "15m", "1h", "4h", "1d"}
+        if interval not in valid_intervals:
+            interval = "1h"
         hours = max(1, min(int(hours), 720))
         now_ms = int(time.time() * 1000)
         start_ms = now_ms - hours * 3600 * 1000

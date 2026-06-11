@@ -97,7 +97,7 @@ def _increment_used(ids_to_inc, lessons=None):
 def _keyword_score(lesson: dict, context_text: str, ctx_chinese: set) -> float:
     """计算一条教训与上下文文本的关键词匹配分数"""
     score = 0
-    lesson_lower = lesson.get("lesson", "").lower()
+    lesson_lower = (lesson.get("lesson") or "").lower()
     for tag in (lesson.get("tags") or []):
         if tag.lower() in context_text.lower():
             score += 2

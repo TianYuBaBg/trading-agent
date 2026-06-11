@@ -602,8 +602,11 @@ def get_trade_history(days: int = 7):
         for f in fills:
             # 跳过关键字段缺失或无效的成交记录，避免单条坏数据炸掉整个函数
             fill_time = f.get("time")
-            if not fill_time or fill_time < cutoff:
+            if not fill_time:
                 continue
+            # Hyperliquid 按时间倒序返回，遇到 cutoff 后即可停止
+            if fill_time < cutoff:
+                break
             px = f.get("px")
             sz = f.get("sz")
             if px is None or sz is None:

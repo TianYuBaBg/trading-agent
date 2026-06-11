@@ -559,7 +559,7 @@ def _save_trade(trade: dict):
     os.makedirs(os.path.dirname(_TRADES_FILE), exist_ok=True)
     trades = _load_trades()
     trade["open_time"] = datetime.datetime.now().isoformat()
-    trade["id"] = max((t.get("id", 0) for t in trades), default=0) + 1
+    trade["id"] = max(((t.get("id") or 0) for t in trades), default=0) + 1
     trades.append(trade)
     with open(_TRADES_FILE, "w", encoding="utf-8") as f:
         json.dump(trades, f, ensure_ascii=False, indent=2)

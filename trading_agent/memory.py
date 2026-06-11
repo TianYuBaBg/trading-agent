@@ -224,7 +224,7 @@ def recall(context_text: str, top_k: int = 3):
                     remaining = [l for l in lessons if l.get("id") not in selected_ids and not l.get("embedding")]
                     fallback = [(_keyword_score(l, context_text, ctx_chinese), l) for l in remaining]
                     fallback.sort(key=lambda x: -x[0])
-                    top.extend(fallback[:top_k - len(top)])
+                    top.extend((0.0, l) for _, l in fallback[:top_k - len(top)])
 
                 _increment_used({l.get("id") for _, l in top}, lessons=lessons)
                 return [

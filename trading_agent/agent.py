@@ -138,7 +138,7 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
         key = f"close_trade:{coin}"
         if key in _executed_ops:
             return {"warning": f"已在当前周期对 {coin} 平过仓，操作已跳过"}
-        result = hl_connector.close_trade(coin, _positions=positions)
+        result = hl_connector.close_trade(coin, _positions=_positions)
         if isinstance(result, dict) and result.get("status") == "已平仓":
             _executed_ops.add(key)
         return result

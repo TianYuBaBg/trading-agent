@@ -121,7 +121,7 @@ def get_market_overview():
         mids = info.all_mids()
         # 获取成交量 / 资金费率等上下文数据
         meta_ctxs = info.meta_and_asset_ctxs()
-        universe = meta_ctxs[0].get("universe", [])
+        universe = meta_ctxs[0].get("universe") or []
         ctxs = meta_ctxs[1] if len(meta_ctxs) > 1 else []
         # 建立 coin -> ctx 的映射（按下标匹配）
         coin_to_ctx = {}
@@ -220,7 +220,7 @@ def get_positions():
     try:
         state = info.user_state(addr)
         positions = []
-        for pos in state.get("assetPositions", []):
+        for pos in (state.get("assetPositions") or []):
             p = pos.get("position")
             if not p:
                 continue
@@ -264,7 +264,7 @@ def get_balance():
         spot_value = 0.0
         try:
             spot_state = info.spot_user_state(addr)
-            for b in spot_state.get("balances", []):
+            for b in (spot_state.get("balances") or []):
                 if b.get("coin") == "USDC":
                     spot_value = float(b.get("total") or 0)
                     break
@@ -303,7 +303,7 @@ def _get_sz_decimals(coin: str) -> int:
     try:
         meta = info.meta()
         # 一次遍历缓存所有币种的 szDecimals，避免每个新币种都调一次 meta()
-        for asset in meta.get("universe", []):
+        for asset in (meta.get("universe") or []):
             _sz_decimals_cache[asset["name"]] = asset["szDecimals"]
         return _sz_decimals_cache.get(coin, 4)
     except Exception:

@@ -175,13 +175,17 @@ def recall(context_text: str, top_k: int = 3):
         except Exception as e:
             print(f"  [记忆] 向量搜索失败: {e}")
 
-    # 向量搜索失败 → 按标签匹配降级
-    keywords = context_text.lower().split()
+    # 向量搜索失败 → 关键词匹配降级（搜索标签 + 正文）
+    keywords = set(context_text.lower().split())
     scored = []
     for l in lessons:
         score = 0
+        lesson_lower = l.get("lesson", "").lower()
         for tag in l.get("tags", []):
             if tag.lower() in context_text.lower():
+                score += 2
+        for kw in keywords:
+            if kw in lesson_lower:
                 score += 1
         scored.append((score, l))
     scored.sort(key=lambda x: -x[0])

@@ -41,7 +41,7 @@ _TOOL_DESCRIPTIONS = {
     "get_positions": "查看当前持仓及盈亏",
     "get_balance": "查看账户总资产和可用余额",
     "open_trade": "开仓交易，参数：coin（币种），side（long/short），size（USD金额≥10），leverage（杠杆倍数，默认1）",
-    "close_trade": "平仓，参数：coin（币种）",
+    "close_trade": "平仓，参数：coin（币种），size（平仓数量，可选，不传则全平）",
     "recall_lessons": "回想过去类似情况学到的教训，参数：context（当前市场情况描述），top_k（返回几条，默认3）",
     "add_lesson": "记录一条新教训，参数：lesson（教训内容），tags（标签列表），outcome（结果）",
 }
@@ -138,7 +138,7 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
         key = f"close_trade:{coin}"
         if key in _executed_ops:
             return {"warning": f"已在当前周期对 {coin} 平过仓，操作已跳过"}
-        result = hl_connector.close_trade(coin, _positions=_positions)
+        result = hl_connector.close_trade(coin, size=args.get("size"), _positions=_positions)
         if isinstance(result, dict) and result.get("status") == "已平仓":
             _executed_ops.add(key)
         return result

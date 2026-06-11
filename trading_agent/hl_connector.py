@@ -322,6 +322,7 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
     """
     ex = _ensure_exchange()
     try:
+        coin = coin.upper()
         # 检查杠杆为正数且不超过上限
         if leverage <= 0:
             return f"开仓失败：杠杆必须为正整数，收到 {leverage}"
@@ -434,6 +435,7 @@ def close_trade(coin: str, size: float = None, _positions=None):
     ex = _ensure_exchange()
     info = _ensure_info()
     try:
+        coin = coin.upper()
         # 获取当前仓位（优先使用调用方传入的数据，避免重复 RPC）
         if _positions is not None and isinstance(_positions, list):
             positions = _positions

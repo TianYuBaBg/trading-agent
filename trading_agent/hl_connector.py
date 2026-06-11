@@ -397,18 +397,22 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
         return f"开仓失败：{e}"
 
 
-def close_trade(coin: str, size: float = None):
+def close_trade(coin: str, size: float = None, _positions=None):
     """
     平仓
     coin: "BTC"
     size: 平仓数量，None = 全平
+    _positions: 调用方已查询过的持仓数据，传入可避免重复 RPC
     返回：平仓结果
     """
     ex = _ensure_exchange()
     info = _ensure_info()
     try:
-        # 获取当前仓位
-        positions = get_positions()
+        # 获取当前仓位（优先使用调用方传入的数据，避免重复 RPC）
+        if _positions is not None and isinstance(_positions, list):
+            positions = _positions
+        else:
+            positions = get_positions()
         if isinstance(positions, str):
             return f"平仓失败：获取持仓失败（{positions}）"
         pos = None
@@ -527,7 +531,7 @@ def get_trade_history(days: int = 7):
                 "side": "long" if f["side"] == "B" else "short",
                 "price": float(f["px"]),
                 "size": float(f["sz"]),
-                "pnl": float(f.get("closedPnl", 0)),
+                "pnl": float(f.get("closedPnl") or 0),
                 "dir": f.get("dir", ""),
                 "time": time.strftime("%m-%d %H:%M", time.localtime(f["time"] / 1000)),
             })

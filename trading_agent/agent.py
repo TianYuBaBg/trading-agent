@@ -137,7 +137,7 @@ def _run_tool(name: str, args: dict):
         key = f"close_trade:{coin}"
         if key in _executed_ops:
             return {"warning": f"已在当前周期对 {coin} 平过仓，操作已跳过"}
-        result = hl_connector.close_trade(coin)
+        result = hl_connector.close_trade(coin, _positions=positions)
         if isinstance(result, dict) and result.get("status") == "已平仓":
             _executed_ops.add(key)
         return result
@@ -210,7 +210,7 @@ def run_trade_cycle():
             if not isinstance(recent_trades, list):
                 print(f"  [风控] 获取今日成交记录失败（{str(recent_trades)[:80]}），跳过风控检查")
             elif recent_trades:
-                today_pnl = sum(t.get("pnl", 0) for t in recent_trades if t.get("pnl"))
+                today_pnl = sum(t.get("pnl") or 0 for t in recent_trades)
                 loss_limit = wallet_value * abs(config.DAILY_LOSS_LIMIT_PCT) / 100
                 if today_pnl < -loss_limit:
                     msg = f"今日亏损 ${today_pnl:.2f} 超过限制 ${-loss_limit:.2f}（{config.DAILY_LOSS_LIMIT_PCT}%），停止交易"

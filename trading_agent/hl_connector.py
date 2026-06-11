@@ -163,11 +163,12 @@ def get_candles(coin: str, interval: str = "1h", hours: int = 24):
     获取某个币的 K 线数据（蜡烛图）
     coin: "BTC"
     interval: "1m"/"5m"/"15m"/"1h"/"4h"/"1d"
-    hours: 往回看多少小时
+    hours: 往回看多少小时，自动限制在 [1, 720] 范围内
     返回：[{"time": "HH:MM", "open": 100, "high": 101, "low": 99, "close": 100, "volume": 1000}, ...]
     """
     info = _ensure_info()
     try:
+        hours = max(1, min(int(hours), 720))
         now_ms = int(time.time() * 1000)
         start_ms = now_ms - hours * 3600 * 1000
         raw = info.candles_snapshot(coin, interval, start_ms, now_ms)

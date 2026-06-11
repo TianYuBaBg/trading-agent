@@ -194,7 +194,10 @@ def run_trade_cycle():
     overview = hl_connector.get_market_overview()
 
     # ---- 风控：每日亏损限制 ----
-    if config.DAILY_LOSS_LIMIT_PCT <= 0 and isinstance(balance, dict):
+    if isinstance(balance, str):
+        print(f"  [风控] 获取余额失败，跳过交易周期（{balance}）")
+        return {"error": f"获取余额失败：{balance}", "state": ""}
+    if config.DAILY_LOSS_LIMIT_PCT <= 0:
         wallet_value = balance.get("wallet_value", 0)
         if wallet_value > 0:
             recent_trades = hl_connector.get_trade_history(days=1)

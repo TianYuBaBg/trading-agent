@@ -321,6 +321,8 @@ def run_trade_cycle():
         # 执行工具（每轮独立执行，结果不回累积）
         had_errors = []
         for tc in tool_calls:
+            if not isinstance(tc, dict):
+                continue
             name = tc.get("name", "")
             args = tc.get("args", {})
             print(f"  [Agent] 调工具: {name}({args})")

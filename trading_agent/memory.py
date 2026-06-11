@@ -90,13 +90,13 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     if isinstance(tags, str):
         tags = [t.strip() for t in tags.split(",") if t.strip()]
 
-    # 去重：去除非文字符号后前 25 字相同，或包含关系
-    clean = _PUNC_RE.sub("", lesson_text)[:25]
-    for existing in lessons:
-        existing_text = existing.get("lesson", "")
-        existing_clean = _PUNC_RE.sub("", existing_text)[:25]
-        if clean == existing_clean or clean in existing_text or existing_clean in lesson_text:
-            return existing
+    # 去重：去除非文字符号后前 50 字相同则视为重复（避免前25字相同但意思不同的教训被误杀）
+    clean = _PUNC_RE.sub("", lesson_text)[:50]
+    if len(clean) >= 20:
+        for existing in lessons:
+            existing_text = existing.get("lesson", "")
+            if _PUNC_RE.sub("", existing_text)[:50] == clean:
+                return existing
 
     # 生成向量
     model = _get_model()
@@ -146,10 +146,6 @@ def recall(context_text: str, top_k: int = 3):
     has_any_embedding = any(l.get("embedding") for l in lessons)
     if not has_any_embedding:
         recent = lessons[-top_k:]
-        for l in recent:
-            l["used_count"] = l.get("used_count", 0) + 1
-        with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
-            json.dump(lessons, f, ensure_ascii=False, indent=2)
         return [
             {"lesson": l["lesson"], "tags": l.get("tags", []), "outcome": l.get("outcome", "")}
             for l in recent
@@ -197,10 +193,6 @@ def recall(context_text: str, top_k: int = 3):
                     fallback.sort(key=lambda x: -x[0])
                     top.extend(fallback[:top_k - len(top)])
 
-                for _, l in top:
-                    l["used_count"] = l.get("used_count", 0) + 1
-                with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
-                    json.dump(lessons, f, ensure_ascii=False, indent=2)
                 return [
                     {"lesson": l["lesson"], "tags": l.get("tags", []), "outcome": l.get("outcome", ""),
                      "similarity": round(s, 3)}
@@ -230,10 +222,6 @@ def recall(context_text: str, top_k: int = 3):
             score += overlap * 5
         scored.append((score, l))
     scored.sort(key=lambda x: -x[0])
-    for _, l in scored[:top_k]:
-        l["used_count"] = l.get("used_count", 0) + 1
-    with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
-        json.dump(lessons, f, ensure_ascii=False, indent=2)
     return [
         {"lesson": l["lesson"], "tags": l.get("tags", []), "outcome": l.get("outcome", "")}
         for _, l in scored[:top_k]

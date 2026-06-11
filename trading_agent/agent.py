@@ -284,7 +284,7 @@ def run_trade_cycle():
             print(f"  [Agent] 结果: {str(result)[:80]}...")
             all_results.append({"tool": name, "result": result})
             # 检测工具是否返回错误
-            if isinstance(result, str) and any(kw in result for kw in ("失败", "错误", "无法", "没有", "未配置", "error", "not found")):
+            if isinstance(result, str) and any(kw in result for kw in ("失败", "错误", "无法", "未配置", "error", "not found")):
                 had_errors.append(f"{name}: {result[:100]}")
             elif isinstance(result, dict) and result.get("error"):
                 had_errors.append(f"{name}: {result['error'][:100]}")
@@ -357,7 +357,7 @@ def run_review():
         analysis = response.choices[0].message.content
         print(f"\n  AI 分析：\n  {analysis}")
 
-        lesson_response = _client.chat.completions.create(
+        lesson_response = _get_client().chat.completions.create(
             model=config.DEEPSEEK_MODEL,
             messages=[
                 {"role": "system", "content": "从以下交易复盘分析中提取 1-2 条最重要的教训，以 JSON 格式返回：{\"lessons\": [{\"text\": \"教训内容\", \"tags\": [\"标签1\", \"标签2\"]}]}"},

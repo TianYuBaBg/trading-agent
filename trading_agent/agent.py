@@ -98,8 +98,9 @@ def _reset_executed_ops():
 
 # ========== 执行工具调用 ==========
 
-def _run_tool(name: str, args: dict):
-    """执行一个工具调用并返回原始 Python 对象（非 JSON 字符串）"""
+def _run_tool(name: str, args: dict, _balance=None, _positions=None):
+    """执行一个工具调用并返回原始 Python 对象（非 JSON 字符串）
+    _balance/_positions: 调用方已查询的持仓/余额数据，用于避免重复 RPC"""
 
     if name == "get_market_overview":
         return hl_connector.get_market_overview()
@@ -126,7 +127,7 @@ def _run_tool(name: str, args: dict):
         key = f"open_trade:{coin}"
         if key in _executed_ops:
             return {"warning": f"已在当前周期对 {coin} 开过仓，操作已跳过"}
-        result = hl_connector.open_trade(coin, side, float(size), int(args.get("leverage") or 1), _balance=balance, _positions=positions)
+        result = hl_connector.open_trade(coin, side, float(size), int(args.get("leverage") or 1), _balance=_balance, _positions=_positions)
         if isinstance(result, dict) and result.get("status") == "已开仓":
             _executed_ops.add(key)
         return result
@@ -294,7 +295,7 @@ def run_trade_cycle():
             args = tc.get("args", {})
             print(f"  [Agent] 调工具: {name}({args})")
             try:
-                result = _run_tool(name, args)
+                result = _run_tool(name, args, _balance=balance, _positions=positions)
             except Exception as e:
                 result = {"error": f"工具 {name} 执行异常: {e}"}
             print(f"  [Agent] 结果: {str(result)[:80]}...")

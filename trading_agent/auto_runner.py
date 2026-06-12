@@ -18,7 +18,7 @@ print(f"  每 {INTERVAL} 秒检查一次市场")
 print("=" * 45)
 
 cycle_count = 0
-last_review_time = 0
+last_review_time = time.time()
 
 while True:
     try:
@@ -33,7 +33,7 @@ while True:
             agent.run_review()
 
         if cycle_count <= 5 and result.get("thought"):
-            print(f"\n[思考] {result['thought']}")
+            print(f"\n[思考] {result['thought'][:300]}")
         if result.get("reply"):
             print(f"\n[AI] {result['reply']}")
 

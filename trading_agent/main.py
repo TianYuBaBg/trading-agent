@@ -218,7 +218,7 @@ def auto_mode():
     import threading
 
     running = True
-    last_review_time = 0
+    last_review_time = time.time()
 
     def _check_input():
         nonlocal running

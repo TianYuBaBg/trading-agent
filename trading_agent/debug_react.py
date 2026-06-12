@@ -42,6 +42,8 @@ def _truncate_safe(results: list, max_len: int = 8000) -> str:
             break
         safe.append(s)
         size += needed
+    if not safe and results:
+        safe.append(json.dumps(results[0], ensure_ascii=False))
     return "[" + ",".join(safe) + "]"
 
 

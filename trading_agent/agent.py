@@ -576,6 +576,9 @@ def run_review():
             print("  复盘 AI 分析：返回空响应，跳过")
             return review_data
         analysis = response.choices[0].message.content
+        if not analysis:
+            print("  复盘 AI 分析：返回内容为空，跳过")
+            return review_data
         print(f"\n  AI 分析：\n  {analysis}")
 
         lesson_response = _get_client().chat.completions.create(

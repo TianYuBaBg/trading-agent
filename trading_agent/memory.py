@@ -216,10 +216,10 @@ def recall(context_text: str, top_k: int = 3):
     top_k: 返回前几条（限制在 1~20）
     返回：最相关的教训列表，每条包含 lesson, tags, outcome
     """
-    if not isinstance(context_text, str):
-        context_text = str(context_text) or ""
-    else:
-        context_text = context_text or ""
+    if context_text is None:
+        context_text = ""
+    elif not isinstance(context_text, str):
+        context_text = str(context_text)
     top_k = max(1, min(int(top_k), 20))
     lessons = _load_lessons()
 

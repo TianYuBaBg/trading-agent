@@ -45,8 +45,12 @@ def _load_wallet():
     if not os.path.exists(_CONFIG_PATH):
         _wallet_cache = (None, None, None)
         return _wallet_cache
-    with open(_CONFIG_PATH, encoding="utf-8") as f:
-        cfg = json.load(f)
+    try:
+        with open(_CONFIG_PATH, encoding="utf-8") as f:
+            cfg = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        _wallet_cache = (None, None, None)
+        return _wallet_cache
 
     # 优先使用 API 钱包模式
     main_addr = cfg.get("main_address") or ""

@@ -175,10 +175,8 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
         lesson = args.get("lesson")
         if not lesson or not isinstance(lesson, str):
             return {"error": "记录教训失败：缺少必填参数 lesson 或类型错误（需要字符串）"}
-        tags = args.get("tags") or []
-        if isinstance(tags, str):
-            tags = [t.strip() for t in tags.split(",") if t.strip()]
-        result = memory.add_lesson(lesson, tags, args.get("outcome") or "")
+        # tags 交给 memory.add_lesson 统一规范化（str→list / 去空格 / 小写 / 去重）
+        result = memory.add_lesson(lesson, args.get("tags"), args.get("outcome") or "")
         if result is None:
             return {"status": "未保存", "reason": "教训内容过短（少于5字符）或重复"}
         return {"status": "已保存", "lesson": result}
@@ -372,6 +370,7 @@ def run_trade_cycle():
 
         # 执行工具（每轮独立执行，结果不回累积）
         had_errors = []
+        had_warnings = []
         results_before = len(all_results)
         for tc in tool_calls:
             if not isinstance(tc, dict):
@@ -400,14 +399,14 @@ def run_trade_cycle():
                     positions = new_positions
             print(f"  [Agent] 结果: {str(result)[:80]}...")
             all_results.append({"tool": name, "result": result})
-            # 检测工具是否返回错误或警告
+            # 分离错误与警告，避免去重提示干扰 AI 对真正失败的判断
             if isinstance(result, str):
                 had_errors.append(f"{name}: {result}")
             elif isinstance(result, dict):
                 if result.get("error"):
                     had_errors.append(f"{name}: {result['error']}")
                 elif result.get("warning"):
-                    had_errors.append(f"{name} 警告: {result['warning']}")
+                    had_warnings.append(f"{name}: {result['warning']}")
 
         # 把所有工具结果送回 AI 继续分析
         messages.append({"role": "assistant", "content": json.dumps(decision, ensure_ascii=False)})
@@ -431,6 +430,8 @@ def run_trade_cycle():
         feedback = f"## 工具返回结果\n{all_results_str}\n"
         if had_errors:
             feedback += "\n⚠️ 以下工具调用失败，请仔细检查，不要假设操作已成功：\n" + "\n".join(had_errors) + "\n"
+        if had_warnings:
+            feedback += "\nℹ️ 以下操作已执行（被去重跳过），无需重复操作：\n" + "\n".join(had_warnings) + "\n"
         feedback += "\n## 根据以上数据做最终决策。开仓用 open_trade，平仓用 close_trade，不交易则 tool_calls 留空。"
         messages.append({"role": "user", "content": feedback})
 

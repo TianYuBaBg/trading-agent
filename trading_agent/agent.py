@@ -28,7 +28,7 @@ def _get_client():
     global _client
     if _client is None:
         if not config.DEEPSEEK_API_KEY:
-            raise RuntimeError("DEEPSEEK_API_KEY 未设置，请通过环境变量配置")
+            raise RuntimeError("DEEPSEEK_API_KEY 未设置，请通过环境变量或 data/config.json 配置")
         _client = OpenAI(api_key=config.DEEPSEEK_API_KEY, base_url=config.DEEPSEEK_BASE_URL)
     return _client
 

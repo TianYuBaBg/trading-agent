@@ -540,6 +540,11 @@ def close_trade(coin: str, size=None, _positions=None):
         if current_price == 0:
             return f"无法获取 {coin} 价格"
 
+        # 校验开仓价有效（避免 entry_px 为 0 时 PnL 计算出错）
+        entry_px = float(pos.get("entry_px") or 0)
+        if entry_px <= 0:
+            return f"平仓失败：{coin} 持仓开仓价异常（{pos.get('entry_px')}），拒绝平仓"
+
         close_sz = abs(pos["size"]) if size is None else abs(float(size))
         if close_sz <= 0:
             return "平仓失败：平仓数量必须大于 0"
@@ -573,8 +578,8 @@ def close_trade(coin: str, size=None, _positions=None):
             # 提取实际成交价（avgPx），比 all_mids 的中间价更精确
             current_price = _get_fill_price(statuses, current_price)
 
-        # 计算盈亏
-        pnl = (current_price - pos["entry_px"]) * close_sz
+        # 计算盈亏（用前面校验过的 entry_px，避免直接访问 pos["entry_px"] 拿到 0）
+        pnl = (current_price - entry_px) * close_sz
         if pos["size"] < 0:  # 空单
             pnl = -pnl
         side = "short" if pos["size"] < 0 else "long"

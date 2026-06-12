@@ -78,9 +78,10 @@ def _load_lessons():
         backup = _LESSONS_FILE + ".bak"
         try:
             shutil.copy2(_LESSONS_FILE, backup)
+            print(f"  [记忆] lessons.json 损坏，已备份到 {backup}")
         except Exception:
-            pass
-        print(f"  [记忆] lessons.json 损坏，已备份到 {backup}，重新创建")
+            print(f"  [记忆] lessons.json 损坏（备份失败）")
+        print("  [记忆] 重新创建 lessons.json")
         try:
             with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
                 json.dump([], f, ensure_ascii=False, indent=2)

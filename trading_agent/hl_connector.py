@@ -622,9 +622,10 @@ def _load_trades():
     backup = _TRADES_FILE + ".bak"
     try:
         shutil.copy2(_TRADES_FILE, backup)
+        print(f"  [交易记录] trades.json 损坏，已备份到 {backup}")
     except Exception:
-        pass
-    print(f"  [交易记录] trades.json 损坏，已备份到 {backup}，重新创建")
+        print(f"  [交易记录] trades.json 损坏（备份失败）")
+    print("  [交易记录] 重新创建 trades.json")
     try:
         with open(_TRADES_FILE, "w", encoding="utf-8") as f:
             json.dump([], f, ensure_ascii=False, indent=2)

@@ -21,10 +21,6 @@ from eth_account import Account
 
 from trading_agent import config
 
-# 读取钱包配置
-_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "data", "config.json")
-
-
 _wallet_cache = None
 
 
@@ -48,11 +44,11 @@ def _load_wallet():
     global _wallet_cache
     if _wallet_cache is not None:
         return _wallet_cache
-    if not os.path.exists(_CONFIG_PATH):
+    if not os.path.exists(config.CONFIG_PATH):
         _wallet_cache = (None, None, None)
         return _wallet_cache
     try:
-        with open(_CONFIG_PATH, encoding="utf-8") as f:
+        with open(config.CONFIG_PATH, encoding="utf-8") as f:
             cfg = json.load(f)
     except (json.JSONDecodeError, OSError):
         _wallet_cache = (None, None, None)

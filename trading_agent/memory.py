@@ -237,8 +237,7 @@ def recall(context_text: str, top_k: int = 3):
                             scored.append((sim, l))
                         except Exception:
                             continue  # 跳过损坏的 embedding，不影响其他教训
-                scored.sort(key=lambda x: -x[0])
-                top = scored[:top_k]
+                top = heapq.nlargest(top_k, scored, key=lambda x: x[0])
 
                 # 向量结果不足 top_k 时，用关键词匹配补充无 embedding 的教训
                 if len(top) < top_k:
@@ -246,8 +245,7 @@ def recall(context_text: str, top_k: int = 3):
                     ctx_chinese = set(re.findall(r'[一-鿿]', context_text.lower()))
                     remaining = [l for l in lessons if l.get("id") not in selected_ids and not l.get("embedding")]
                     fallback = [(_keyword_score(l, context_text, ctx_chinese), l) for l in remaining]
-                    fallback.sort(key=lambda x: -x[0])
-                    top.extend((0.0, l) for _, l in fallback[:top_k - len(top)])
+                    top.extend((0.0, l) for _, l in heapq.nlargest(top_k - len(top), fallback, key=lambda x: x[0]))
 
                 _increment_used({l.get("id") for _, l in top}, lessons=lessons)
                 return [
@@ -260,14 +258,13 @@ def recall(context_text: str, top_k: int = 3):
 
     # 向量搜索失败 → 关键词匹配降级（搜索标签 + 正文）
     ctx_chinese = set(re.findall(r'[一-鿿]', context_text.lower()))
-    scored = [(_keyword_score(l, context_text, ctx_chinese), l) for l in lessons]
-    scored.sort(key=lambda x: -x[0])
-    top_ids = {l.get("id") for _, l in scored[:top_k]}
+    top_list = heapq.nlargest(top_k, ((_keyword_score(l, context_text, ctx_chinese), l) for l in lessons), key=lambda x: x[0])
+    top_ids = {l.get("id") for _, l in top_list}
     _increment_used(top_ids, lessons=lessons)
     return [
         {"lesson": (l.get("lesson") or ""), "tags": (l.get("tags") or []), "outcome": (l.get("outcome") or ""),
          "similarity": 0.0}
-        for _, l in scored[:top_k]
+        for _, l in top_list
     ]
 
 

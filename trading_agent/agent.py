@@ -104,10 +104,12 @@ def _reset_executed_ops():
 
 def _truncate_results(items: list, max_len: int = 8000) -> str:
     """在完整 item 边界截断 JSON 列表，避免切在字符串中间；单条超限时至少保留第一条"""
-    ordered = [item for _, item in sorted(enumerate(items), key=lambda r: (0 if str(r[1].get("tool") or "") in _KEY_OPS else 1, r[0]))]
-    payload = json.dumps(ordered, ensure_ascii=False)
+    # 先检查完整长度：不超限时保持原始调用顺序返回，避免 AI 看到错序的结果
+    payload = json.dumps(items, ensure_ascii=False)
     if len(payload) <= max_len:
         return payload
+    # 超限时按 KEY_OPS 优先级排序，确保交易操作结果不被截断
+    ordered = [item for _, item in sorted(enumerate(items), key=lambda r: (0 if str(r[1].get("tool") or "") in _KEY_OPS else 1, r[0]))]
     safe = []
     size = 2  # 预留 "[]" 括号的空间
     for item in ordered:

@@ -663,27 +663,35 @@ def _save_trade(trade: dict):
 
 
 def _update_trade_close(coin: str, exit_price: float, pnl: float, side: str = ""):
-    """平仓后更新交易记录：标记最近一笔该币种同方向的开仓交易为已平仓"""
+    """平仓后更新交易记录：关闭该币种同方向所有未平仓记录，按开仓金额比例分摊 PnL"""
     if not os.path.exists(_TRADES_FILE):
         return
     trades = _load_trades()
-    # 标记该币种最近一笔未平仓记录为已平仓（按方向匹配，避免多方向时关错记录）
     now = datetime.datetime.now().isoformat()
-    found = False
-    for t in reversed(trades):
-        if t.get("coin") == coin and t.get("side") == side and not t.get("close_time"):
+    # 找出该币种同方向所有未平仓记录（多次加仓积累的仓位需全部关闭）
+    open_trades = [t for t in trades
+                   if t.get("coin") == coin and t.get("side") == side and not t.get("close_time")]
+    if not open_trades:
+        return
+    total_entry_value = sum(t.get("usd_size") or 0 for t in open_trades)
+    if total_entry_value > 0:
+        for t in open_trades:
             t["close_time"] = now
             t["exit_price"] = exit_price
-            t["pnl"] = round(pnl, 2)
+            t["pnl"] = round(pnl * (t.get("usd_size") or 0) / total_entry_value, 2)
             t["status"] = "closed"
-            found = True
-            break  # 只关最近一笔，避免多笔重复的 PnL
-    if found:
-        try:
-            with open(_TRADES_FILE, "w", encoding="utf-8") as f:
-                json.dump(trades, f, ensure_ascii=False, indent=2)
-        except OSError:
-            print("  [交易记录] 更新平仓记录写入失败")
+    else:
+        # 兜底：全量 PnL 记到最近一笔
+        latest = max(open_trades, key=lambda t: t.get("id") or 0)
+        latest["close_time"] = now
+        latest["exit_price"] = exit_price
+        latest["pnl"] = round(pnl, 2)
+        latest["status"] = "closed"
+    try:
+        with open(_TRADES_FILE, "w", encoding="utf-8") as f:
+            json.dump(trades, f, ensure_ascii=False, indent=2)
+    except OSError:
+        print("  [交易记录] 更新平仓记录写入失败")
 
 
 def get_trade_history(days: int = 7, since_ms: int = None):

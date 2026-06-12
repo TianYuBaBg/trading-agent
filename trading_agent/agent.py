@@ -45,7 +45,7 @@ _TOOL_DESCRIPTIONS = {
     "close_trade": "平仓，参数：coin（币种），size（平仓数量，可选，不传则全平）",
     "recall_lessons": "回想过去类似情况学到的教训，参数：context（当前市场情况描述），top_k（返回几条，默认3）",
     "add_lesson": "记录一条新教训，参数：lesson（教训内容），tags（标签列表），outcome（结果）",
-    "transfer_spot_to_perp": "把 USDC 从 Spot 转到永续合约账户（仅直连私钥模式有效），参数：amount（金额）",
+    "transfer_spot_to_perp": "把 USDC 从 Spot 转到永续合约账户（仅直连私钥模式有效），参数：amount（金额，0=全部转入）",
 }
 
 
@@ -186,7 +186,11 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
         except (TypeError, ValueError):
             return {"error": f"转账失败：amount 参数格式无效（{args.get('amount')}）"}
         if amount <= 0:
-            return {"error": "转账失败：amount 必须为正数"}
+            # amount <= 0 表示全额转入（与 main.py 手动模式保持一致）
+            if isinstance(_balance, dict):
+                amount = _balance.get("spot_value") or 0
+            if amount <= 0:
+                return {"error": "转账失败：Spot 账户无可用 USDC"}
         return hl_connector.transfer_spot_to_perp(amount)
     return {"error": f"未知工具: {name}"}
 

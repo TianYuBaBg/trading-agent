@@ -264,6 +264,16 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
     return {"error": f"未知工具: {name}"}
 
 
+# ========== 状态文本格式化 ==========
+
+def _format_state(wallet_mode, balance, positions, overview, extra_assets):
+    return f"""钱包模式：{wallet_mode}
+当前账户：{json.dumps(balance, ensure_ascii=False)}
+当前持仓：{json.dumps(positions, ensure_ascii=False)}
+市场概况：{json.dumps(overview[:20], ensure_ascii=False)}
+非加密资产：{json.dumps(extra_assets, ensure_ascii=False) if extra_assets else "无"}"""
+
+
 # ========== JSON 提取工具 ==========
 
 def _extract_json(text: str) -> dict:
@@ -318,6 +328,7 @@ def run_trade_cycle():
     print(f"{'='*40}")
 
     hl_connector.reset_user_state_cache()
+    hl_connector.reset_mids_cache()
     balance = hl_connector.get_balance()
     if isinstance(balance, str):
         print(f"  [Agent] 获取余额失败，跳过交易周期（{balance}）")
@@ -384,11 +395,7 @@ def run_trade_cycle():
                     break
         # 后续只用 top 30，裁剪 overview 减少 JSON 序列化数据量
         overview = overview[:30]
-    state_text = f"""钱包模式：{wallet_mode}
-当前账户：{json.dumps(balance, ensure_ascii=False)}
-当前持仓：{json.dumps(positions, ensure_ascii=False)}
-市场概况：{json.dumps(overview[:20], ensure_ascii=False)}
-非加密资产：{json.dumps(_extra_assets, ensure_ascii=False) if _extra_assets else "无"}"""
+    state_text = _format_state(wallet_mode, balance, positions, overview, _extra_assets)
 
     # ---- 构造自然语言召回上下文（向量搜索用，不用 JSON）----
     recall_context_parts = []
@@ -508,11 +515,7 @@ def run_trade_cycle():
                 if isinstance(new_positions, list):
                     positions = new_positions
                 # 同步更新 state_text，确保返回的 state 字段反映最新余额/持仓
-                state_text = f"""钱包模式：{wallet_mode}
-当前账户：{json.dumps(balance, ensure_ascii=False)}
-当前持仓：{json.dumps(positions, ensure_ascii=False)}
-市场概况：{json.dumps(overview[:20], ensure_ascii=False)}
-非加密资产：{json.dumps(_extra_assets, ensure_ascii=False) if _extra_assets else "无"}"""
+                state_text = _format_state(wallet_mode, balance, positions, overview, _extra_assets)
             print(f"  [Agent] 结果: {str(result)[:80]}...")
             all_results.append({"tool": name, "result": result})
             # 分离错误与警告，避免去重提示干扰 AI 对真正失败的判断

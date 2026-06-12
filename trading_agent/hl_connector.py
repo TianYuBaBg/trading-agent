@@ -77,6 +77,7 @@ _wallet_address = None
 _sz_decimals_cache = {}
 _sz_decimals_loaded = False
 _user_state_cache = None
+_mids_cache = None
 
 
 def _ensure_info():
@@ -116,6 +117,23 @@ def _ensure_wallet_address():
     return _wallet_address
 
 
+# ========== all_mids 缓存（减少重复 RPC）==========
+
+def _get_mids():
+    """获取 all_mids（带 per-cycle 缓存，避免同周期重复 RPC）"""
+    global _mids_cache
+    if _mids_cache is not None:
+        return _mids_cache
+    info = _ensure_info()
+    _mids_cache = info.all_mids()
+    return _mids_cache
+
+
+def reset_mids_cache():
+    global _mids_cache
+    _mids_cache = None
+
+
 # ========== user_state 缓存（减少重复 RPC）==========
 
 def reset_user_state_cache():
@@ -144,7 +162,7 @@ def get_market_overview():
     """
     info = _ensure_info()
     try:
-        mids = info.all_mids()
+        mids = _get_mids()
         # 获取成交量 / 资金费率等上下文数据
         meta_ctxs = info.meta_and_asset_ctxs()
         universe = meta_ctxs[0].get("universe") or []
@@ -370,6 +388,7 @@ def _get_sz_decimals(coin: str) -> int:
                 _sz_decimals_cache[name] = szd if szd is not None else 4
         return _sz_decimals_cache.get(coin, 4)
     except Exception:
+        _sz_decimals_loaded = True
         return 4
 
 
@@ -394,8 +413,7 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
             return f"开仓失败：杠杆 {leverage}x 超过上限 {config.MAX_LEVERAGE}x"
 
         # 获取当前市价
-        info = _ensure_info()
-        mids = info.all_mids()
+        mids = _get_mids()
         current_price = float(mids.get(coin) or 0)
         if current_price == 0:
             return f"无法获取 {coin} 价格"
@@ -546,8 +564,7 @@ def close_trade(coin: str, size=None, _positions=None):
         if not pos:
             return f"没有 {coin} 的持仓"
 
-        info = _ensure_info()
-        mids = info.all_mids()
+        mids = _get_mids()
         current_price = float(mids.get(coin) or 0)
         if current_price == 0:
             return f"无法获取 {coin} 价格"

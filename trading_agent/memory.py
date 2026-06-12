@@ -87,8 +87,8 @@ def _load_lessons():
                 json.dump([], f, ensure_ascii=False, indent=2)
         except OSError:
             print("  [记忆] 无法重建 lessons.json")
-        _lessons_cache = []
         _cjk_cache.clear()
+        _lessons_cache = []
         return _lessons_cache
 
 
@@ -205,10 +205,10 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     # 文件读取 + 去重检查 + 追加写入（原子操作）
     with _io_lock:
         lessons = _load_lessons()
-        # 去重：完整文本相同才视为重复
-        clean = lesson_text
+        # 去重：忽略大小写后文本相同视为重复
+        clean_lower = lesson_text.lower()
         for existing in lessons:
-            if clean == (existing.get("lesson") or "").strip():
+            if clean_lower == (existing.get("lesson") or "").strip().lower():
                 return {**existing, "_duplicate": True}
 
         lesson = {

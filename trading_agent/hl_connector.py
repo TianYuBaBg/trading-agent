@@ -618,8 +618,11 @@ def _load_trades():
     except Exception:
         pass
     print(f"  [交易记录] trades.json 损坏，已备份到 {backup}，重新创建")
-    with open(_TRADES_FILE, "w", encoding="utf-8") as f:
-        json.dump([], f, ensure_ascii=False, indent=2)
+    try:
+        with open(_TRADES_FILE, "w", encoding="utf-8") as f:
+            json.dump([], f, ensure_ascii=False, indent=2)
+    except OSError:
+        print("  [交易记录] 无法重建 trades.json")
     return []
 
 

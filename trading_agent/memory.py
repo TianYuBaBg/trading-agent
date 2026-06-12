@@ -59,8 +59,11 @@ def _load_lessons():
         if _lessons_cache is not None:
             return _lessons_cache
         if not os.path.exists(_LESSONS_FILE):
-            with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
-                json.dump([], f, ensure_ascii=False, indent=2)
+            try:
+                with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
+                    json.dump([], f, ensure_ascii=False, indent=2)
+            except OSError:
+                print("  [记忆] 无法创建 lessons.json")
             _lessons_cache = []
             return []
         try:

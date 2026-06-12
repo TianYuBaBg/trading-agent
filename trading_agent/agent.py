@@ -65,6 +65,7 @@ def _build_system_prompt():
 7. **核心目标：盈利。积极寻找交易机会，小仓位试单、发现趋势加仓**
 8. 小账户可用高杠杆（3x）提高资金利用率，每笔赚 2-5% 就很好
 9. 不要只会等待，没有明确风险信号就该尝试入场
+10. **同时关注非加密永续合约**：SPX（标普500指数永续）和 PAXG（黄金代币）是 Hyperliquid 上的非加密资产，定期查看其K线趋势和订单簿深度，与传统 crypto 品种对照分析，发现趋势机会时同样可以交易
 
 ## 可用工具
 {json.dumps(_TOOL_DESCRIPTIONS, ensure_ascii=False, indent=2)}
@@ -377,10 +378,16 @@ def run_trade_cycle():
                 }
 
     wallet_mode = hl_connector.get_wallet_mode() or "未配置"
+    _extra_assets = {}
+    if isinstance(overview, list):
+        for _c in overview:
+            if _c.get("coin") in ("SPX", "PAXG"):
+                _extra_assets[_c["coin"]] = _c
     state_text = f"""钱包模式：{wallet_mode}
 当前账户：{json.dumps(balance, ensure_ascii=False)}
 当前持仓：{json.dumps(positions, ensure_ascii=False)}
-市场概况：{json.dumps(overview[:20], ensure_ascii=False)}"""
+市场概况：{json.dumps(overview[:20], ensure_ascii=False)}
+非加密资产：{json.dumps(_extra_assets, ensure_ascii=False) if _extra_assets else "无"}"""
 
     # ---- 构造自然语言召回上下文（向量搜索用，不用 JSON）----
     recall_context_parts = []
@@ -500,7 +507,8 @@ def run_trade_cycle():
                 state_text = f"""钱包模式：{wallet_mode}
 当前账户：{json.dumps(balance, ensure_ascii=False)}
 当前持仓：{json.dumps(positions, ensure_ascii=False)}
-市场概况：{json.dumps(overview[:20], ensure_ascii=False)}"""
+市场概况：{json.dumps(overview[:20], ensure_ascii=False)}
+非加密资产：{json.dumps(_extra_assets, ensure_ascii=False) if _extra_assets else "无"}"""
             print(f"  [Agent] 结果: {str(result)[:80]}...")
             all_results.append({"tool": name, "result": result})
             # 分离错误与警告，避免去重提示干扰 AI 对真正失败的判断

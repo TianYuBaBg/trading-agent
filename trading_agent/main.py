@@ -274,7 +274,8 @@ def auto_mode():
             if cycle_count <= 1 and result.get("thought"):
                 print(f"\n[思考] {result['thought']}")
             if result.get("reply"):
-                print(f"\n[AI] {result['reply']}")
+                if not result.get("error"):
+                    print(f"\n[AI] {result['reply']}")
 
             # 定期复盘（每 6 小时）
             now = time.time()

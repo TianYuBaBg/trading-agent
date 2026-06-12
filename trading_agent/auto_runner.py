@@ -34,7 +34,7 @@ while True:
 
         if cycle_count <= 5 and result.get("thought"):
             print(f"\n[思考] {result['thought'][:300]}")
-        if result.get("reply"):
+        if result.get("reply") and not result.get("error"):
             print(f"\n[AI] {result['reply']}")
 
         # 每 6 小时复盘

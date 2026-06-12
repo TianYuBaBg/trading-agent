@@ -71,6 +71,7 @@ def _load_lessons():
                 data = json.load(f)
             if isinstance(data, list):
                 _lessons_cache = [l for l in data if isinstance(l, dict)]
+                _cjk_cache.clear()
                 return _lessons_cache
         except (json.JSONDecodeError, ValueError, OSError):
             pass

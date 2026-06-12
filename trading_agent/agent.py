@@ -109,10 +109,10 @@ def _truncate_results(items: list, max_len: int = 8000) -> str:
     if len(payload) <= max_len:
         return payload
     safe = []
-    size = 0
+    size = 2  # 预留 "[]" 括号的空间
     for item in ordered:
         s = json.dumps(item, ensure_ascii=False)
-        needed = len(s) + (2 if safe else 0)
+        needed = len(s) + (1 if safe else 0)  # 逗号分隔符仅 1 字节
         if size + needed > max_len:
             break
         safe.append(s)

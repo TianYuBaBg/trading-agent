@@ -304,8 +304,7 @@ def get_balance():
 
         # 也查 Spot 余额（API 钱包不支持 Spot 查询，跳过避免无意义的失败 RPC）
         spot_value = 0.0
-        _, _, wallet_mode = _load_wallet()
-        if wallet_mode != "api":
+        if get_wallet_mode() != "api":
             try:
                 spot_state = info.spot_user_state(addr)
                 for b in (spot_state.get("balances") or []):

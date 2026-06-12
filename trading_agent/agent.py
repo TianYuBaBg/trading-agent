@@ -284,6 +284,13 @@ def run_trade_cycle():
         print(f"  [Agent] 获取余额失败，跳过交易周期（{balance}）")
         return {"error": f"获取余额失败：{balance}", "reply": f"获取余额失败：{balance}", "state": "", "tool_results": [], "thought": "", "need_review": False, "lesson_to_save": ""}
 
+    # 余额为 0 时跳过后续 RPC 调用和 AI 调用（节约 API 费用）
+    if (balance.get("wallet_value") or 0) <= 0:
+        msg = "账户余额为 0，跳过交易周期，等待充值 USDC"
+        print(f"  [Agent] {msg}")
+        return {"error": msg, "reply": "账户余额为 0，请先充值 USDC", "state": json.dumps(balance, ensure_ascii=False),
+                "tool_results": [], "thought": msg, "need_review": False, "lesson_to_save": ""}
+
     positions = hl_connector.get_positions()
     if isinstance(positions, str):
         print(f"  [Agent] 获取持仓失败，跳过交易周期（{positions}）")
@@ -315,21 +322,6 @@ def run_trade_cycle():
                         "state": f"余额：{json.dumps(balance, ensure_ascii=False)}\n今日盈亏：{today_pnl:.2f}",
                         "lesson_to_save": "",
                     }
-
-    # 账户余额为 0 时跳过 AI 调用（节约 API 费用）
-    wallet_value = balance.get("wallet_value") or 0
-    if wallet_value <= 0:
-        msg = "账户余额为 0，跳过交易周期，等待充值 USDC"
-        print(f"  [Agent] {msg}")
-        return {
-            "error": msg,
-            "reply": "账户余额为 0，请先充值 USDC",
-            "state": json.dumps(balance, ensure_ascii=False),
-            "tool_results": [],
-            "thought": msg,
-            "need_review": False,
-            "lesson_to_save": "",
-        }
 
     wallet_mode = hl_connector.get_wallet_mode() or "未配置"
     state_text = f"""

@@ -291,7 +291,7 @@ def run_trade_cycle():
     # ---- 构造自然语言召回上下文（向量搜索用，不用 JSON）----
     recall_context_parts = []
     if isinstance(balance, dict):
-        recall_context_parts.append(f"余额 ${balance.get('wallet_value') or 0}，可用 ${balance.get('available') or 0}")
+        recall_context_parts.append(f"余额 ${balance.get('wallet_value') or 0}，可用 ${balance.get('available') or 0}，模式 {wallet_mode}")
     if isinstance(positions, list) and positions:
         pos_desc = "; ".join(
             f"{p.get('coin') or '?'} {p.get('direction') or '?'} {abs(p.get('size') or 0)}张 盈亏${p.get('pnl') or 0}"

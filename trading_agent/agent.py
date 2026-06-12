@@ -270,7 +270,7 @@ def run_trade_cycle():
                         "error": msg,
                         "thought": msg,
                         "reply": msg,
-                        "need_review": True,
+                        "need_review": False,  # 避免 auto 模式每周期重复调 DeepSeek
                         "tool_results": [],
                         "state": f"余额：{json.dumps(balance, ensure_ascii=False)}\n今日盈亏：{today_pnl:.2f}",
                         "lesson_to_save": "",

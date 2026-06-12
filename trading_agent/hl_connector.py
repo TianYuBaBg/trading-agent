@@ -705,7 +705,7 @@ def get_trade_history(days: int = 7):
                 "side": side_str,
                 "price": price,
                 "size": size,
-                "pnl": float(f.get("closedPnl") or 0),
+                "pnl": float(f["closedPnl"]) if f.get("closedPnl") is not None else None,
                 "dir": f.get("dir") or "",
                 "time": time.strftime("%m-%d %H:%M", time.gmtime(fill_time / 1000)),
             })

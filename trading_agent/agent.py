@@ -512,8 +512,8 @@ def run_review():
         print("  没有近期交易")
         return
 
-    # 过滤开仓成交（closedPnl=0），只保留已平仓成交用于计算胜率
-    closed = [t for t in trades if t.get("pnl")]
+    # 过滤开仓成交（closedPnl=None），只保留已平仓成交用于计算胜率
+    closed = [t for t in trades if t.get("pnl") is not None]
     total_pnl = sum(t["pnl"] for t in closed)
     win_trades = [t for t in closed if t["pnl"] > 0]
     loss_trades = [t for t in closed if t["pnl"] < 0]

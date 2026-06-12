@@ -634,8 +634,11 @@ def _save_trade(trade: dict):
     trade["open_time"] = datetime.datetime.now().isoformat()
     trade["id"] = max(((t.get("id") or 0) for t in trades), default=0) + 1
     trades.append(trade)
-    with open(_TRADES_FILE, "w", encoding="utf-8") as f:
-        json.dump(trades, f, ensure_ascii=False, indent=2)
+    try:
+        with open(_TRADES_FILE, "w", encoding="utf-8") as f:
+            json.dump(trades, f, ensure_ascii=False, indent=2)
+    except OSError:
+        print("  [交易记录] 保存交易记录写入失败")
 
 
 def _update_trade_close(coin: str, exit_price: float, pnl: float, side: str = ""):
@@ -655,8 +658,11 @@ def _update_trade_close(coin: str, exit_price: float, pnl: float, side: str = ""
             found = True
             break  # 只关最近一笔，避免多笔重复的 PnL
     if found:
-        with open(_TRADES_FILE, "w", encoding="utf-8") as f:
-            json.dump(trades, f, ensure_ascii=False, indent=2)
+        try:
+            with open(_TRADES_FILE, "w", encoding="utf-8") as f:
+                json.dump(trades, f, ensure_ascii=False, indent=2)
+        except OSError:
+            print("  [交易记录] 更新平仓记录写入失败")
 
 
 def get_trade_history(days: int = 7):

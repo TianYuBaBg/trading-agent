@@ -602,7 +602,7 @@ def close_trade(coin: str, size=None, _positions=None):
 
 # ========== 交易记录 ==========
 
-_TRADES_FILE = os.path.join(config._DATA_DIR, "trades.json")
+_TRADES_FILE = os.path.join(config.DATA_DIR, "trades.json")
 
 
 def _load_trades():

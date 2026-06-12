@@ -22,7 +22,7 @@ import threading
 import numpy as np
 from trading_agent import config
 
-_LESSONS_FILE = os.path.join(config._DATA_DIR, "lessons.json")
+_LESSONS_FILE = os.path.join(config.DATA_DIR, "lessons.json")
 
 # 内存缓存，避免同一个 cycle 内重复读文件
 _lessons_cache = None

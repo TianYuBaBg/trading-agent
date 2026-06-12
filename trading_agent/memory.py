@@ -141,6 +141,8 @@ def _keyword_score(lesson: dict, ctx_lower: str, ctx_chinese: set, ctx_keywords:
     score = 0
     lesson_lower = (lesson.get("lesson") or "").lower()
     for tag in (lesson.get("tags") or []):
+        if not tag:
+            continue
         if tag.isascii():
             if re.search(r'\b' + re.escape(tag) + r'\b', ctx_lower):
                 score += 2

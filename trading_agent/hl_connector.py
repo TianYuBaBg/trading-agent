@@ -155,12 +155,19 @@ def get_market_overview():
             # 过滤 Spot 内部编号（# 或 @ 开头），只保留标准永续合约币种
             if coin.startswith("#") or coin.startswith("@"):
                 continue
-            item = {"coin": coin, "mid": float(mid)}
+            item = {"coin": coin}
+            try:
+                item["mid"] = float(mid)
+            except (TypeError, ValueError):
+                continue  # 跳过价格异常的币种
             # 补充成交量和资金费率
             ctx = coin_to_ctx.get(coin)
             if ctx:
-                item["volume"] = float(ctx.get("dayNtlVlm") or 0)
-                item["funding"] = float(ctx.get("funding") or 0)
+                try:
+                    item["volume"] = float(ctx.get("dayNtlVlm") or 0)
+                    item["funding"] = float(ctx.get("funding") or 0)
+                except (TypeError, ValueError):
+                    pass  # 无法解析成交量/费率不影响价格
             overview.append(item)
         # 按成交量降序排列，流动性高的币种在前
         overview.sort(key=lambda x: x.get("volume") or 0, reverse=True)

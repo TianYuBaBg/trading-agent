@@ -357,7 +357,7 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
         # 获取当前市价
         info = _ensure_info()
         mids = info.all_mids()
-        current_price = float(mids.get(coin, 0))
+        current_price = float(mids.get(coin) or 0)
         if current_price == 0:
             return f"无法获取 {coin} 价格"
 
@@ -365,7 +365,6 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
         if size <= 0:
             return f"开仓失败：size 必须为正数，收到 {size}"
 
-        # 按 szDecimals 精度计算币数量
         sz_decimals = _get_sz_decimals(coin)
         coin_size = round(size / current_price, sz_decimals)
 
@@ -481,7 +480,7 @@ def close_trade(coin: str, size=None, _positions=None):
             return f"没有 {coin} 的持仓"
 
         mids = info.all_mids()
-        current_price = float(mids.get(coin, 0))
+        current_price = float(mids.get(coin) or 0)
         if current_price == 0:
             return f"无法获取 {coin} 价格"
 

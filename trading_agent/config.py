@@ -53,7 +53,7 @@ DAILY_LOSS_LIMIT_PCT = -5  # -5%，日亏 5% 就停
 # 只允许交易的币种（在下方列表中添加，自动转大写；空 = 不限）
 # 例如：_ALLOWED_COINS = ["BTC", "ETH"]
 _ALLOWED_COINS = []
-ALLOWED_COINS = [c.strip().upper() for c in _ALLOWED_COINS]
+ALLOWED_COINS = [c.strip().upper() for c in _ALLOWED_COINS if c.strip()]
 
 # 自动交易间隔（秒）- 在 main.py 的 --auto 模式中使用
 AUTO_TRADE_INTERVAL = 300  # 5 分钟

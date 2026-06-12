@@ -140,7 +140,7 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
         if not coin:
             return {"error": "获取订单簿失败：缺少必填参数 coin"}
         try:
-            depth = int(args.get("depth") or 5)
+            depth = int(float(args.get("depth") or 5))
         except (TypeError, ValueError):
             return {"error": f"get_orderbook depth 参数无效：'{args.get('depth')}'"}
         return hl_connector.get_orderbook(coin, depth)
@@ -152,7 +152,7 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
         if interval not in ("1m", "5m", "15m", "1h", "4h", "1d"):
             return {"error": f"get_candles interval 参数无效：'{interval}'，有效值：1m/5m/15m/1h/4h/1d"}
         try:
-            hours = int(args.get("hours") or 24)
+            hours = int(float(args.get("hours") or 24))
         except (TypeError, ValueError):
             return {"error": f"get_candles hours 参数无效：'{args.get('hours')}'"}
         return hl_connector.get_candles(coin, interval, hours)
@@ -217,7 +217,7 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
         return result
     elif name == "recall_lessons":
         try:
-            top_k = int(args.get("top_k") or 3)
+            top_k = int(float(args.get("top_k") or 3))
         except (TypeError, ValueError):
             return {"error": f"recall_lessons top_k 参数无效：'{args.get('top_k')}'"}
         return memory.recall(args.get("context") or "", top_k)

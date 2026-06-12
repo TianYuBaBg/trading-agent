@@ -558,6 +558,8 @@ def run_trade_cycle():
         "tool_results": all_results,
         "state": state_text,
         "lesson_to_save": lesson_to_save,
+        "balance": balance,
+        "positions": positions,
     }
 
 

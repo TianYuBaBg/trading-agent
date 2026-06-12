@@ -675,10 +675,11 @@ def _update_trade_close(coin: str, exit_price: float, pnl: float, side: str = ""
             print("  [交易记录] 更新平仓记录写入失败")
 
 
-def get_trade_history(days: int = 7):
+def get_trade_history(days: int = 7, since_ms: int = None):
     """
     从链上获取最近成交记录（使用 Hyperliquid 真实成交数据）
-    days: 最近几天
+    days: 最近几天（since_ms 为 None 时使用）
+    since_ms: 可选的起始时间戳（毫秒），覆盖 days 参数
     返回：交易列表，每条包含 coin, side, price, size, pnl, time
     """
     info = _ensure_info()
@@ -689,7 +690,10 @@ def get_trade_history(days: int = 7):
         fills = info.user_fills(addr)
         if not isinstance(fills, list):
             return []
-        cutoff = int(time.time() * 1000) - days * 86400 * 1000
+        if since_ms is not None:
+            cutoff = since_ms
+        else:
+            cutoff = int(time.time() * 1000) - days * 86400 * 1000
         recent = []
         for f in fills:
             # 跳过关键字段缺失或无效的成交记录，避免单条坏数据炸掉整个函数

@@ -341,7 +341,9 @@ def run_trade_cycle():
     # 风控检查：DAILY_LOSS_LIMIT_PCT < 0 表示启用风控（-5 表示日亏 5% 停止）
     # 执行至此 wallet_value >= min_value（前面已对 <= 0 和 < min_value 提前返回）
     if config.DAILY_LOSS_LIMIT_PCT < 0:
-        recent_trades = hl_connector.get_trade_history(days=1)
+        # 按自然日（凌晨到凌晨）查询成交记录，避免滚动 24h 窗口把昨晚的亏损算到今天
+        _today_midnight = int(datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000)
+        recent_trades = hl_connector.get_trade_history(days=1, since_ms=_today_midnight)
         if not isinstance(recent_trades, list):
             print(f"  [风控] 获取今日成交记录失败（{str(recent_trades)[:80]}），跳过风控检查")
         elif recent_trades:

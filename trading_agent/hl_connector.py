@@ -135,8 +135,10 @@ def _get_user_state(addr: str):
     if _user_state_cache is not None:
         return _user_state_cache
     info = _ensure_info()
-    _user_state_cache = info.user_state(addr)
-    return _user_state_cache
+    result = info.user_state(addr)
+    if isinstance(result, dict):
+        _user_state_cache = result
+    return result
 
 
 # ========== 查询工具 ==========

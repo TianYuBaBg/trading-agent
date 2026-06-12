@@ -332,7 +332,7 @@ def _get_fill_price(statuses: list, fallback: float) -> float:
     """从 SDK 响应 statuses 中提取实际成交均价 (avgPx)"""
     if statuses and isinstance(statuses[0], dict):
         fill = statuses[0].get("filled") or {}
-        if fill and fill.get("avgPx") is not None:
+        if fill.get("avgPx") is not None:
             try:
                 px = float(fill["avgPx"])
             except (TypeError, ValueError):

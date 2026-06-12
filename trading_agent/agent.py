@@ -179,16 +179,15 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None, _wallet_mod
         key = f"close_trade:{coin}"
         if key in _executed_ops:
             return {"warning": f"已在当前周期对 {coin} 平过仓，操作已跳过"}
-        size_arg = args.get("size")
-        if size_arg is not None:
+        close_size = args.get("size")
+        if close_size is not None:
             try:
-                size_val = abs(float(size_arg))
-                if size_val <= 0:
+                close_size = abs(float(close_size))
+                if close_size <= 0:
                     return {"error": "平仓失败：size 必须为正数"}
-                size_arg = size_val
             except (TypeError, ValueError):
-                return {"error": f"平仓失败：size 参数格式无效（{size_arg}）"}
-        result = hl_connector.close_trade(coin, size=size_arg, _positions=_positions)
+                return {"error": f"平仓失败：size 参数格式无效（{args.get('size')}）"}
+        result = hl_connector.close_trade(coin, size=close_size, _positions=_positions)
         if isinstance(result, dict) and result.get("status") == "已平仓":
             if not (result.get("remaining_size") or 0):  # 仅全平时标记为已执行，部分平保留重试
                 _executed_ops.add(key)

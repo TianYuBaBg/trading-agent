@@ -149,7 +149,10 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     elif tags is None:
         tags = []
     else:
-        tags = [str(t).strip().lower() for t in tags if t is not None and str(t).strip()]
+        try:
+            tags = [str(t).strip().lower() for t in tags if t is not None and str(t).strip()]
+        except TypeError:
+            return None
     tags = list(set(tags))
 
     # 生成向量（I/O 密集，放锁外避免阻塞其他线程）

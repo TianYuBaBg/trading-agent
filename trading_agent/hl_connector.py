@@ -216,7 +216,7 @@ def get_candles(coin: str, interval: str = "1h", hours: int = 24):
         for i in range(len(raw) - 1, -1, -step):
             c = raw[i]
             candles.append({
-                "time": time.strftime("%m-%d %H:%M", time.localtime(c["t"] / 1000)),
+                "time": time.strftime("%m-%d %H:%M", time.gmtime(c["t"] / 1000)),
                 "open": float(c["o"]),
                 "high": float(c["h"]),
                 "low": float(c["l"]),
@@ -662,7 +662,7 @@ def get_trade_history(days: int = 7):
                 "size": size,
                 "pnl": float(f.get("closedPnl") or 0),
                 "dir": f.get("dir") or "",
-                "time": time.strftime("%m-%d %H:%M", time.localtime(fill_time / 1000)),
+                "time": time.strftime("%m-%d %H:%M", time.gmtime(fill_time / 1000)),
             })
         return recent
     except Exception as e:

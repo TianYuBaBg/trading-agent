@@ -356,6 +356,7 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
     ex = _ensure_exchange()
     try:
         coin = coin.upper()
+        side = side.lower()
         # 检查杠杆为正数且不超过上限
         if leverage <= 0:
             return f"开仓失败：杠杆必须为正整数，收到 {leverage}"
@@ -693,8 +694,8 @@ def transfer_spot_to_perp(amount: float):
         result = ex.usd_class_transfer(amount, to_perp=True)
         if not result:
             return "转账失败：SDK 返回空结果"
-        # SDK 可能在返回的 dict 中嵌了错误
-        raw_str = str(result)
+        # SDK 可能在返回的 dict 中嵌了错误（str(dict) 用单引号导致 "error" 匹配失效，用 json.dumps）
+        raw_str = json.dumps(result) if isinstance(result, (dict, list)) else str(result)
         if '"status":"err"' in raw_str or '"status": "err"' in raw_str or '"response":"Must deposit"' in raw_str:
             return f"转账失败：API 钱包模式不支持转账（如需转账请用直连私钥模式），raw={raw_str[:150]}"
         return {"status": "ok", "amount": amount, "raw": raw_str[:200]}

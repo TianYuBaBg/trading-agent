@@ -99,12 +99,15 @@ def _increment_used(ids_to_inc, lessons=None):
     if lessons is None:
         lessons = _load_lessons()
     with _io_lock:
+        modified = False
         for l in lessons:
             lid = l.get("id")
             if lid is not None and lid in ids_to_inc:
                 l["used_count"] = (l.get("used_count") or 0) + 1
-        with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
-            json.dump(lessons, f, ensure_ascii=False, indent=2)
+                modified = True
+        if modified:
+            with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
+                json.dump(lessons, f, ensure_ascii=False, indent=2)
 
 
 def _keyword_score(lesson: dict, context_text: str, ctx_chinese: set) -> float:

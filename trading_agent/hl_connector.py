@@ -131,8 +131,7 @@ def _get_user_state(addr: str):
         return _user_state_cache
     info = _ensure_info()
     result = info.user_state(addr)
-    if isinstance(result, dict):
-        _user_state_cache = result
+    _user_state_cache = result  # 缓存所有结果（含错误），避免同周期重复 RPC
     return result
 
 

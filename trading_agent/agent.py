@@ -210,7 +210,11 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None, _wallet_mod
                 _executed_ops.add(key)
         return result
     elif name == "recall_lessons":
-        return memory.recall(args.get("context") or "", int(args.get("top_k") or 3))
+        try:
+            top_k = int(args.get("top_k") or 3)
+        except (TypeError, ValueError):
+            return {"error": f"recall_lessons top_k 参数无效：'{args.get('top_k')}'"}
+        return memory.recall(args.get("context") or "", top_k)
     elif name == "add_lesson":
         lesson = args.get("lesson")
         if not lesson or not isinstance(lesson, str):

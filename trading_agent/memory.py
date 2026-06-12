@@ -111,10 +111,10 @@ def _increment_used(ids_to_inc, lessons=None):
 
 
 # 教训中文字符集缓存，避免每次搜索都重复运行正则
-_cjk_cache: dict[int, set] = {}
+_cjk_cache: dict[int, set[str]] = {}
 
 
-def _get_lesson_cjk(lesson: dict) -> set:
+def _get_lesson_cjk(lesson: dict) -> set[str]:
     """提取教训的中文字符集（带缓存）"""
     lid = lesson.get("id")
     if lid is not None and lid in _cjk_cache:
@@ -126,11 +126,10 @@ def _get_lesson_cjk(lesson: dict) -> set:
     return cjk
 
 
-def _keyword_score(lesson: dict, context_text: str, ctx_chinese: set) -> float:
+def _keyword_score(lesson: dict, ctx_lower: str, ctx_chinese: set) -> float:
     """计算一条教训与上下文文本的关键词匹配分数"""
     score = 0
     lesson_lower = (lesson.get("lesson") or "").lower()
-    ctx_lower = context_text.lower()
     for tag in (lesson.get("tags") or []):
         if tag.lower() in ctx_lower:
             score += 2
@@ -226,11 +225,13 @@ def recall(context_text: str, top_k: int = 3):
     if not lessons:
         return []
 
+    ctx_lower = context_text.lower()
+    ctx_chinese = set(re.findall(r'[一-鿿]', ctx_lower))
+
     # 如果所有 lessons 都没有 embedding（旧数据 / 模型不可用），按关键词相关度排序返回
     has_any_embedding = any(l.get("embedding") for l in lessons)
     if not has_any_embedding:
-        ctx_chinese = set(re.findall(r'[一-鿿]', context_text.lower()))
-        selected = heapq.nlargest(top_k, lessons, key=lambda l: _keyword_score(l, context_text, ctx_chinese))
+        selected = heapq.nlargest(top_k, lessons, key=lambda l: _keyword_score(l, ctx_lower, ctx_chinese))
         _increment_used({l.get("id") for l in selected}, lessons=lessons)
         return [
             {"lesson": (l.get("lesson") or ""), "tags": (l.get("tags") or []), "outcome": (l.get("outcome") or ""),
@@ -261,9 +262,8 @@ def recall(context_text: str, top_k: int = 3):
                 # 向量结果不足 top_k 时，用关键词匹配补充无 embedding 的教训
                 if len(top) < top_k:
                     selected_ids = {l[1].get("id") for l in top}
-                    ctx_chinese = set(re.findall(r'[一-鿿]', context_text.lower()))
                     remaining = [l for l in lessons if l.get("id") not in selected_ids and not l.get("embedding")]
-                    fallback = [(_keyword_score(l, context_text, ctx_chinese), l) for l in remaining]
+                    fallback = [(_keyword_score(l, ctx_lower, ctx_chinese), l) for l in remaining]
                     top.extend((0.0, l) for _, l in heapq.nlargest(top_k - len(top), fallback, key=lambda x: x[0]))
 
                 _increment_used({l.get("id") for _, l in top}, lessons=lessons)
@@ -276,8 +276,7 @@ def recall(context_text: str, top_k: int = 3):
             print(f"  [记忆] 向量搜索失败: {e}")
 
     # 向量搜索失败 → 关键词匹配降级（搜索标签 + 正文）
-    ctx_chinese = set(re.findall(r'[一-鿿]', context_text.lower()))
-    top_list = heapq.nlargest(top_k, ((_keyword_score(l, context_text, ctx_chinese), l) for l in lessons), key=lambda x: x[0])
+    top_list = heapq.nlargest(top_k, ((_keyword_score(l, ctx_lower, ctx_chinese), l) for l in lessons), key=lambda x: x[0])
     top_ids = {l.get("id") for _, l in top_list}
     _increment_used(top_ids, lessons=lessons)
     return [

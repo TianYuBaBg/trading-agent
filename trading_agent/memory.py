@@ -49,35 +49,39 @@ def _get_model():
 
 
 def _load_lessons():
-    """读取 lessons.json，确保文件有效且为 list，返回 lessons 列表（内存缓存）"""
+    """读取 lessons.json，确保文件有效且为 list，返回 lessons 列表（内存缓存，线程安全）"""
     global _lessons_cache
     if _lessons_cache is not None:
         return _lessons_cache
-    os.makedirs(os.path.dirname(_LESSONS_FILE), exist_ok=True)
-    if not os.path.exists(_LESSONS_FILE):
+    with _io_lock:
+        # 双检锁：获取锁后再检查一次，防止并发初始加载
+        if _lessons_cache is not None:
+            return _lessons_cache
+        os.makedirs(os.path.dirname(_LESSONS_FILE), exist_ok=True)
+        if not os.path.exists(_LESSONS_FILE):
+            with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
+                json.dump([], f, ensure_ascii=False, indent=2)
+            _lessons_cache = []
+            return []
+        try:
+            with open(_LESSONS_FILE, encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, list):
+                _lessons_cache = [l for l in data if isinstance(l, dict)]
+                return _lessons_cache
+        except (json.JSONDecodeError, ValueError):
+            pass
+        # 文件损坏或非 list，备份并重建
+        backup = _LESSONS_FILE + ".bak"
+        try:
+            shutil.copy2(_LESSONS_FILE, backup)
+        except Exception:
+            pass
+        print(f"  [记忆] lessons.json 损坏，已备份到 {backup}，重新创建")
         with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
             json.dump([], f, ensure_ascii=False, indent=2)
         _lessons_cache = []
         return []
-    try:
-        with open(_LESSONS_FILE, encoding="utf-8") as f:
-            data = json.load(f)
-        if isinstance(data, list):
-            _lessons_cache = [l for l in data if isinstance(l, dict)]
-            return _lessons_cache
-    except (json.JSONDecodeError, ValueError):
-        pass
-    # 文件损坏或非 list，备份并重建
-    backup = _LESSONS_FILE + ".bak"
-    try:
-        shutil.copy2(_LESSONS_FILE, backup)
-    except Exception:
-        pass
-    print(f"  [记忆] lessons.json 损坏，已备份到 {backup}，重新创建")
-    with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
-        json.dump([], f, ensure_ascii=False, indent=2)
-    _lessons_cache = []
-    return []
 
 
 def _cosine_similarity(a, b):
@@ -130,8 +134,6 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     tags: 标签，如 ["btc", "追多", "fomo"]
     outcome: 结果，如 "亏损2%"
     """
-    lessons = _load_lessons()
-
     if not isinstance(lesson_text, str):
         return None
     lesson_text = lesson_text.strip()
@@ -147,13 +149,7 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
         tags = [str(t).strip().lower() for t in tags if t is not None and str(t).strip()]
     tags = list(set(tags))
 
-    # 去重：完整文本相同才视为重复（严格匹配，避免误杀相似但不同的教训）
-    clean = lesson_text
-    for existing in lessons:
-        if clean == (existing.get("lesson") or "").strip():
-            return existing
-
-    # 生成向量
+    # 生成向量（I/O 密集，放锁外避免阻塞其他线程）
     model = _get_model()
     embedding = []
     if model:
@@ -165,16 +161,24 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
         except Exception:
             pass
 
-    lesson = {
-        "id": max(((l.get("id") or 0) for l in lessons), default=0) + 1,
-        "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-        "lesson": lesson_text,
-        "tags": tags or [],
-        "outcome": outcome or "",
-        "embedding": embedding,
-        "used_count": 0,
-    }
+    # 文件读取 + 去重检查 + 追加写入（原子操作）
     with _io_lock:
+        lessons = _load_lessons()
+        # 去重：完整文本相同才视为重复
+        clean = lesson_text
+        for existing in lessons:
+            if clean == (existing.get("lesson") or "").strip():
+                return existing
+
+        lesson = {
+            "id": max(((l.get("id") or 0) for l in lessons), default=0) + 1,
+            "date": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "lesson": lesson_text,
+            "tags": tags or [],
+            "outcome": outcome or "",
+            "embedding": embedding,
+            "used_count": 0,
+        }
         lessons.append(lesson)
         with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
             json.dump(lessons, f, ensure_ascii=False, indent=2)

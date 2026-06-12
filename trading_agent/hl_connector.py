@@ -457,7 +457,7 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
                 lev_str = json.dumps(lev_resp) if isinstance(lev_resp, (dict, list)) else str(lev_resp)
             except (TypeError, ValueError):
                 lev_str = str(lev_resp)
-            if '"error"' in lev_str.lower() or '"status": "err"' in lev_str:
+            if '"error"' in lev_str.lower() or '"status": "err"' in lev_str.lower():
                 return f"开仓失败：设置杠杆失败（{lev_str[:200]}）"
 
         # 市价单（IOC = Immediate-or-Cancel，市价吃单）

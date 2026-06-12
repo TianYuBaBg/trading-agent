@@ -104,9 +104,9 @@ def _reset_executed_ops():
 
 # ========== 执行工具调用 ==========
 
-def _run_tool(name: str, args: dict, _balance=None, _positions=None):
+def _run_tool(name: str, args: dict, _balance=None, _positions=None, _wallet_mode=None):
     """执行一个工具调用并返回原始 Python 对象（非 JSON 字符串）
-    _balance/_positions: 调用方已查询的持仓/余额数据，用于避免重复 RPC"""
+    _balance/_positions/_wallet_mode: 调用方已查询的数据，用于避免重复 RPC"""
 
     if not isinstance(args, dict):
         return {"error": f"工具 {name} 参数格式错误：需要 JSON 对象，收到 {type(args).__name__}"}
@@ -183,7 +183,7 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
         lesson_clean = {k: v for k, v in result.items() if k != "embedding"} if isinstance(result, dict) else result
         return {"status": "已保存", "lesson": lesson_clean}
     elif name == "transfer_spot_to_perp":
-        if hl_connector.get_wallet_mode() == "api":
+        if (_wallet_mode or hl_connector.get_wallet_mode()) == "api":
             return {"error": "转账失败：API 钱包模式不支持转账到永续合约，如需此功能请使用直连私钥模式"}
         try:
             amount = float(args.get("amount") or 0)
@@ -389,7 +389,7 @@ def run_trade_cycle():
             args = tc.get("args") or {}
             print(f"  [Agent] 调工具: {name}({args})")
             try:
-                result = _run_tool(name, args, _balance=balance, _positions=positions)
+                result = _run_tool(name, args, _balance=balance, _positions=positions, _wallet_mode=wallet_mode)
             except Exception as e:
                 result = {"error": f"工具 {name} 执行异常: {e}"}
             # 交易或转账成功后刷新 balance/positions，避免后续仓位检查用旧数据

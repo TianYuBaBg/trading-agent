@@ -317,6 +317,7 @@ def get_balance():
         return {
             "wallet_value": round(total, 2),
             "margin_used": round(margin_used, 2),
+            "perp_available": round(perp_value - margin_used, 2),
             "available": round(total - margin_used, 2),
             "perp_value": round(perp_value, 2),
             "spot_value": round(spot_value, 2),

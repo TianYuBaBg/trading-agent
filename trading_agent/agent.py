@@ -181,6 +181,8 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
             return {"warning": f"已在当前周期对 {coin} 开过仓，操作已跳过"}
         try:
             size_val = float(size)
+            if size_val <= 0:
+                return {"error": f"开仓失败：size 必须大于 0，收到 {size}"}
         except (TypeError, ValueError):
             return {"error": f"开仓失败：size 参数格式无效（{size}）"}
         try:

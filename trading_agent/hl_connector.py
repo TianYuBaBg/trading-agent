@@ -333,7 +333,12 @@ def _get_fill_price(statuses: list, fallback: float) -> float:
     if statuses and isinstance(statuses[0], dict):
         fill = statuses[0].get("filled") or {}
         if fill and fill.get("avgPx") is not None:
-            return float(fill["avgPx"])
+            try:
+                px = float(fill["avgPx"])
+            except (TypeError, ValueError):
+                return fallback
+            if px > 0:
+                return px
     return fallback
 
 

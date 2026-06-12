@@ -558,6 +558,11 @@ def close_trade(coin: str, size=None, _positions=None):
         max_sz = abs(pos["size"])
         if close_sz > max_sz:
             close_sz = max_sz
+        # 舍入到合法精度，避免 SDK 拒绝（如 0.000625 → 0.00062）
+        _close_szd = _get_sz_decimals(coin)
+        close_sz = round(close_sz, _close_szd)
+        if close_sz <= 0:
+            return "平仓失败：舍入后期望数量为 0，请检查持仓规模"
         result = ex.market_close(coin, close_sz, current_price, slippage=0.01)
         if not result:
             return "平仓失败：订单返回空结果"

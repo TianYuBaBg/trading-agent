@@ -168,6 +168,9 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
     if len(lesson_text) < 5:
         return None
 
+    # 归一化 outcome：强制转为字符串（AI 可能传数字如 -2.5）
+    outcome = str(outcome).strip() if outcome is not None else ""
+
     # 归一化 tags：允许字符串传入，强制转为字符串列表（小写 + 去重）
     if isinstance(tags, str):
         tags = [t.strip().lower() for t in tags.split(",") if t.strip()]

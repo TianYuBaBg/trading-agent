@@ -436,6 +436,9 @@ def run_trade_cycle():
                     break
                 safe.append(s)
                 size += needed
+            # 单个结果就超 8000 时，至少保留第一个，避免 AI 完全看不到工具返回
+            if not safe and ordered:
+                safe.append(json.dumps(ordered[0], ensure_ascii=False))
             all_results_str = "[" + ",".join(safe) + "]"
         feedback = f"## 工具返回结果\n{all_results_str}\n"
         if had_errors:

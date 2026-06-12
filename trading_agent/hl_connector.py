@@ -246,12 +246,12 @@ def get_positions():
             p = pos.get("position")
             if not p:
                 continue
-            szi = p.get("szi", 0)
-            if szi is None or float(szi) == 0:
+            szi = p.get("szi") or 0
+            if float(szi) == 0:
                 continue
-            lev = p.get("leverage", 1)
+            lev = p.get("leverage") or 1
             if isinstance(lev, dict):
-                lev = lev.get("value", 1)
+                lev = lev.get("value") or 1
             positions.append({
                 "coin": p.get("coin") or "",
                 "size": float(szi),

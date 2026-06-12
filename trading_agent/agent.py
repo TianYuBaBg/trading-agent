@@ -102,6 +102,26 @@ def _reset_executed_ops():
     _executed_ops = set()
 
 
+def _truncate_results(items: list, max_len: int = 8000) -> str:
+    """在完整 item 边界截断 JSON 列表，避免切在字符串中间；单条超限时至少保留第一条"""
+    ordered = sorted(items, key=lambda r: (0 if r["tool"] in _KEY_OPS else 1, r["tool"]))
+    payload = json.dumps(ordered, ensure_ascii=False)
+    if len(payload) <= max_len:
+        return payload
+    safe = []
+    size = 0
+    for item in ordered:
+        s = json.dumps(item, ensure_ascii=False)
+        needed = len(s) + (2 if safe else 0)
+        if size + needed > max_len:
+            break
+        safe.append(s)
+        size += needed
+    if not safe and ordered:
+        safe.append(json.dumps(ordered[0], ensure_ascii=False))
+    return "[" + ",".join(safe) + "]"
+
+
 # ========== 执行工具调用 ==========
 
 def _run_tool(name: str, args: dict, _balance=None, _positions=None, _wallet_mode=None):
@@ -422,24 +442,7 @@ def run_trade_cycle():
         messages.append({"role": "assistant", "content": json.dumps(decision, ensure_ascii=False)})
         # 只传本轮工具结果（非累积），避免多轮累积导致 8000 字截断切掉新结果
         round_results = all_results[results_before:]
-        # 按优先级排序：交易操作 > 其他操作，同类按工具名字典序
-        ordered = sorted(round_results, key=lambda r: (0 if r["tool"] in _KEY_OPS else 1, r["tool"]))
-        all_results_str = json.dumps(ordered, ensure_ascii=False)
-        if len(all_results_str) > 8000:
-            # 在完整 item 边界截断，避免切在 JSON 字符串中间
-            safe = []
-            size = 0
-            for item in ordered:
-                s = json.dumps(item, ensure_ascii=False)
-                needed = len(s) + (2 if safe else 0)
-                if size + needed > 8000:
-                    break
-                safe.append(s)
-                size += needed
-            # 单个结果就超 8000 时，至少保留第一个，避免 AI 完全看不到工具返回
-            if not safe and ordered:
-                safe.append(json.dumps(ordered[0], ensure_ascii=False))
-            all_results_str = "[" + ",".join(safe) + "]"
+        all_results_str = _truncate_results(round_results)
         feedback = f"## 工具返回结果\n{all_results_str}\n"
         if had_errors:
             feedback += "\n⚠️ 以下工具调用失败，请仔细检查，不要假设操作已成功：\n" + "\n".join(had_errors) + "\n"

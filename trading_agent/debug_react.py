@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from openai import OpenAI
 from trading_agent import config, hl_connector, memory
-from trading_agent.agent import _build_system_prompt, _run_tool, _TOOL_DESCRIPTIONS, _extract_json
+from trading_agent.agent import _build_system_prompt, _run_tool, _TOOL_DESCRIPTIONS, _extract_json, _truncate_results
 
 client = OpenAI(api_key=config.DEEPSEEK_API_KEY, base_url=config.DEEPSEEK_BASE_URL)
 
@@ -28,23 +28,6 @@ messages = [
 ]
 
 
-def _truncate_safe(results: list, max_len: int = 8000) -> str:
-    """在完整 item 边界截断 JSON 字符串，避免切在字符串中间"""
-    payload = json.dumps(results, ensure_ascii=False)
-    if len(payload) <= max_len:
-        return payload
-    safe = []
-    size = 0
-    for item in results:
-        s = json.dumps(item, ensure_ascii=False)
-        needed = len(s) + (2 if safe else 0)
-        if size + needed > max_len:
-            break
-        safe.append(s)
-        size += needed
-    if not safe and results:
-        safe.append(json.dumps(results[0], ensure_ascii=False))
-    return "[" + ",".join(safe) + "]"
 
 
 for round_idx in range(3):
@@ -98,5 +81,5 @@ for round_idx in range(3):
 
     # 把全部结果一次性送回给 AI（item 边界安全截断）
     messages.append({"role": "assistant", "content": json.dumps(decision, ensure_ascii=False)})
-    results_str = _truncate_safe(all_results)
+    results_str = _truncate_results(all_results)
     messages.append({"role": "user", "content": f"## 以下是工具返回结果\n{results_str}\n## 根据这些新数据，分析并得出最终决策。\n## 同时注意：以下工具可能有失败的情况，请检查原因，不要假设操作已成功执行。\n## tool_calls为空 = 最终决策。如需开仓用 open_trade，平仓用 close_trade。"})

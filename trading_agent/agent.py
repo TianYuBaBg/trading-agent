@@ -91,6 +91,9 @@ def _build_system_prompt():
 # 记录当前周期已执行过的操作，防止 AI 同一轮重复开仓
 _executed_ops: set = set()
 
+# 工具结果排序优先级：交易操作优先，避免截断丢失关键信息
+_KEY_OPS = {"open_trade", "close_trade", "transfer_spot_to_perp", "add_lesson"}
+
 
 def _reset_executed_ops():
     """每轮交易循环开始时调用"""
@@ -391,10 +394,9 @@ def run_trade_cycle():
         # 把所有工具结果送回 AI 继续分析
         messages.append({"role": "assistant", "content": json.dumps(decision, ensure_ascii=False)})
         # 只传本轮工具结果（非累积），避免多轮累积导致 8000 字截断切掉新结果
-        key_ops = {"open_trade", "close_trade", "transfer_spot_to_perp", "add_lesson"}
         round_results = all_results[results_before:]
         # 按优先级排序：交易操作 > 其他操作，同类按工具名字典序
-        ordered = sorted(round_results, key=lambda r: (0 if r["tool"] in key_ops else 1, r["tool"]))
+        ordered = sorted(round_results, key=lambda r: (0 if r["tool"] in _KEY_OPS else 1, r["tool"]))
         all_results_str = json.dumps(ordered, ensure_ascii=False)
         if len(all_results_str) > 8000:
             # 在完整 item 边界截断，避免切在 JSON 字符串中间

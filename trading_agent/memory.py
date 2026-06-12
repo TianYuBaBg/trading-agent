@@ -86,8 +86,8 @@ def _load_lessons():
 
 def _cosine_similarity(a, b):
     """计算两个向量之间的余弦相似度"""
-    a = np.array(a)
-    b = np.array(b)
+    a = np.asarray(a)
+    b = np.asarray(b)
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-10))
 
 

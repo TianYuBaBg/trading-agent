@@ -210,11 +210,11 @@ def recall(context_text: str, top_k: int = 3):
     if not lessons:
         return []
 
-    # 如果所有 lessons 都没有 embedding（旧数据），按 used_count 升序返回（最少使用的优先）
+    # 如果所有 lessons 都没有 embedding（旧数据 / 模型不可用），按关键词相关度排序返回
     has_any_embedding = any(l.get("embedding") for l in lessons)
     if not has_any_embedding:
-        # 使用 heapq.nsmallest 获取 used_count 最小的 top_k 条（性能更好）
-        selected = heapq.nsmallest(top_k, lessons, key=lambda l: l.get("used_count") or 0)
+        ctx_chinese = set(re.findall(r'[一-鿿]', context_text.lower()))
+        selected = heapq.nlargest(top_k, lessons, key=lambda l: _keyword_score(l, context_text, ctx_chinese))
         _increment_used({l.get("id") for l in selected}, lessons=lessons)
         return [
             {"lesson": (l.get("lesson") or ""), "tags": (l.get("tags") or []), "outcome": (l.get("outcome") or ""),

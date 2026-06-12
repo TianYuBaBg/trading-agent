@@ -699,7 +699,7 @@ def get_trade_history(days: int = 7):
             if price <= 0 or size <= 0:
                 continue
             raw_side = f.get("side")
-            side_str = "long" if raw_side == "B" else "short" if raw_side == "S" else "unknown"
+            side_str = "buy" if raw_side == "B" else "sell" if raw_side == "S" else "unknown"
             recent.append({
                 "coin": f.get("coin") or "",
                 "side": side_str,

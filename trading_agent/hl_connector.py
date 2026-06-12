@@ -178,6 +178,7 @@ def get_orderbook(coin: str, depth: int = 5):
     """
     info = _ensure_info()
     try:
+        depth = max(1, min(int(depth), 50))  # 限制在 1~50 档
         book = info.l2_snapshot(coin)
         levels = book["levels"]
         # levels[0] = bids（买盘）, levels[1] = asks（卖盘）

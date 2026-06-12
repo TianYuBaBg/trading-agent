@@ -342,6 +342,10 @@ def _get_sz_decimals(coin: str) -> int:
     global _sz_decimals_cache
     if coin in _sz_decimals_cache:
         return _sz_decimals_cache[coin]
+    # 缓存非空说明 meta() 已调过，表中没有的币直接给默认值，无需重复 RPC
+    if _sz_decimals_cache:
+        _sz_decimals_cache[coin] = 4
+        return 4
     info = _ensure_info()
     try:
         meta = info.meta()

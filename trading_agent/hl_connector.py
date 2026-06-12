@@ -256,8 +256,8 @@ def get_positions():
                 "coin": p.get("coin") or "",
                 "size": float(szi),
                 "direction": "long" if float(szi) > 0 else "short",
-                "entry_px": float(p.get("entryPx", 0) or 0),
-                "pnl": float(p.get("unrealizedPnl", 0) or 0),
+                "entry_px": float(p.get("entryPx") or 0),
+                "pnl": float(p.get("unrealizedPnl") or 0),
                 "leverage": float(lev or 1),
                 "liquidation_px": float(p.get("liquidationPx") or 0),
             })

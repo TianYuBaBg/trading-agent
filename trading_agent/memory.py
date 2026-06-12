@@ -21,7 +21,7 @@ import heapq
 import threading
 import numpy as np
 
-_LESSONS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "lessons.json")
+_LESSONS_FILE = os.path.join(config._DATA_DIR, "lessons.json")
 
 # 内存缓存，避免同一个 cycle 内重复读文件
 _lessons_cache = None
@@ -57,7 +57,6 @@ def _load_lessons():
         # 双检锁：获取锁后再检查一次，防止并发初始加载
         if _lessons_cache is not None:
             return _lessons_cache
-        os.makedirs(os.path.dirname(_LESSONS_FILE), exist_ok=True)
         if not os.path.exists(_LESSONS_FILE):
             with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
                 json.dump([], f, ensure_ascii=False, indent=2)

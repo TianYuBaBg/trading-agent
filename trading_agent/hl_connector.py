@@ -602,7 +602,7 @@ def close_trade(coin: str, size=None, _positions=None):
 
 # ========== 交易记录 ==========
 
-_TRADES_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "trades.json")
+_TRADES_FILE = os.path.join(config._DATA_DIR, "trades.json")
 
 
 def _load_trades():
@@ -630,7 +630,6 @@ def _load_trades():
 
 def _save_trade(trade: dict):
     """保存一笔交易到本地"""
-    os.makedirs(os.path.dirname(_TRADES_FILE), exist_ok=True)
     trades = _load_trades()
     trade["open_time"] = datetime.datetime.now().isoformat()
     trade["id"] = max(((t.get("id") or 0) for t in trades), default=0) + 1

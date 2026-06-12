@@ -12,6 +12,10 @@
 import os
 import json
 
+# 确保数据目录存在（统一创建，避免各模块各自创建）
+_DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+os.makedirs(_DATA_DIR, exist_ok=True)
+
 # DeepSeek - 环境变量 > data/config.json > 报错
 _raw = os.environ.get("DEEPSEEK_API_KEY")
 DEEPSEEK_API_KEY = _raw.strip() if _raw else ""

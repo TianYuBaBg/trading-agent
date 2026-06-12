@@ -301,11 +301,18 @@ def run_trade_cycle():
         print(f"  [Agent] 获取余额失败，跳过交易周期（{balance}）")
         return {"error": f"获取余额失败：{balance}", "reply": f"获取余额失败：{balance}", "state": "", "tool_results": [], "thought": "", "need_review": False, "lesson_to_save": ""}
 
-    # 余额为 0 时跳过后续 RPC 调用和 AI 调用（节约 API 费用）
-    if (balance.get("wallet_value") or 0) <= 0:
+    wallet_value = balance.get("wallet_value") or 0
+    if wallet_value <= 0:
         msg = "账户余额为 0，跳过交易周期，等待充值 USDC"
         print(f"  [Agent] {msg}")
         return {"error": msg, "reply": "账户余额为 0，请先充值 USDC", "state": json.dumps(balance, ensure_ascii=False),
+                "tool_results": [], "thought": msg, "need_review": False, "lesson_to_save": ""}
+    # 低于最小开仓所需金额时提前跳过，避免浪费 RPC 和 AI 调用
+    min_value = 10.0 / (config.MAX_POSITION_SIZE_PCT / 100)
+    if wallet_value < min_value:
+        msg = f"余额 ${wallet_value:.2f} 低于开仓所需最低 ${min_value:.2f}（$10 / {config.MAX_POSITION_SIZE_PCT}%），跳过交易周期"
+        print(f"  [Agent] {msg}")
+        return {"error": msg, "reply": msg, "state": json.dumps(balance, ensure_ascii=False),
                 "tool_results": [], "thought": msg, "need_review": False, "lesson_to_save": ""}
 
     positions = hl_connector.get_positions()
@@ -318,9 +325,8 @@ def run_trade_cycle():
         print(f"  [Agent] 获取行情失败，跳过交易周期（{overview}）")
         return {"error": f"获取行情失败：{overview}", "reply": f"获取行情失败：{overview}", "state": "", "tool_results": [], "thought": "", "need_review": False, "lesson_to_save": ""}
     # 风控检查：DAILY_LOSS_LIMIT_PCT < 0 表示启用风控（-5 表示日亏 5% 停止）
-    # 执行至此 wallet_value > 0（第 290 行已对 <= 0 提前返回）
+    # 执行至此 wallet_value >= min_value（前面已对 <= 0 和 < min_value 提前返回）
     if config.DAILY_LOSS_LIMIT_PCT < 0:
-        wallet_value = balance.get("wallet_value") or 0
         recent_trades = hl_connector.get_trade_history(days=1)
         if not isinstance(recent_trades, list):
             print(f"  [风控] 获取今日成交记录失败（{str(recent_trades)[:80]}），跳过风控检查")

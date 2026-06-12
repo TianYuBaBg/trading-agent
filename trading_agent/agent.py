@@ -344,7 +344,10 @@ def run_trade_cycle():
             print(f"  [风控] 获取今日成交记录失败（{str(recent_trades)[:80]}），跳过风控检查")
         elif recent_trades:
             today_pnl = sum(t.get("pnl") or 0 for t in recent_trades)
-            loss_limit = wallet_value * abs(config.DAILY_LOSS_LIMIT_PCT) / 100
+            # 用今日盈亏前的余额（当前余额 - 已实现盈亏）作为止损基准，
+            # 避免亏损缩小分母后止损线同步降低，导致止损比预期更激进
+            pre_trade_base = wallet_value - today_pnl  # today_pnl 为负时 pre_trade_base > wallet_value
+            loss_limit = max(wallet_value, pre_trade_base) * abs(config.DAILY_LOSS_LIMIT_PCT) / 100
             if today_pnl < -loss_limit:
                 msg = f"今日亏损 ${today_pnl:.2f} 超过限制 ${-loss_limit:.2f}（{config.DAILY_LOSS_LIMIT_PCT}%），停止交易"
                 print(f"  [风控] {msg}")

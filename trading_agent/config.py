@@ -15,11 +15,12 @@ import os
 import json
 
 # 确保数据目录存在（统一创建，避免各模块各自创建）
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(_BASE_DIR, "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 # 配置文件路径（被 config.py 和 hl_connector.py 共用，集中管理避免重复定义）
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "data", "config.json")
+CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "config.json")
 os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
 
 # DeepSeek - 环境变量 > data/config.json > 报错

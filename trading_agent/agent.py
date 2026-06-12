@@ -104,7 +104,7 @@ def _reset_executed_ops():
 
 def _truncate_results(items: list, max_len: int = 8000) -> str:
     """在完整 item 边界截断 JSON 列表，避免切在字符串中间；单条超限时至少保留第一条"""
-    ordered = sorted(items, key=lambda r: (0 if r["tool"] in _KEY_OPS else 1, r["tool"]))
+    ordered = sorted(items, key=lambda r: (0 if r.get("tool") in _KEY_OPS else 1, r.get("tool", "")))
     payload = json.dumps(ordered, ensure_ascii=False)
     if len(payload) <= max_len:
         return payload

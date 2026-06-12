@@ -140,7 +140,11 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
             size_val = float(size)
         except (TypeError, ValueError):
             return {"error": f"开仓失败：size 参数格式无效（{size}）"}
-        result = hl_connector.open_trade(coin, side, size_val, int(args.get("leverage") or 1), _balance=_balance, _positions=_positions)
+        try:
+            leverage_val = int(args.get("leverage") or 1)
+        except (TypeError, ValueError):
+            return {"error": f"开仓失败：leverage 参数格式无效（{args.get('leverage')}）"}
+        result = hl_connector.open_trade(coin, side, size_val, leverage_val, _balance=_balance, _positions=_positions)
         if isinstance(result, dict) and result.get("status") == "已开仓":
             _executed_ops.add(key)
         return result
@@ -199,6 +203,15 @@ def _extract_json(text: str) -> dict:
     if clean.startswith("```"):
         clean = clean.split("\n", 1)[-1]
         clean = clean.rsplit("```", 1)[0].strip()
+    # 先尝试直接解析（能正确处理 } 出现在字符串值中的情况）
+    if clean:
+        try:
+            result = json.loads(clean)
+            if isinstance(result, dict):
+                return result
+        except json.JSONDecodeError:
+            pass
+    # 降级：手动找 {} 包裹（兼容尾部有额外文本的情况）
     brace_start = clean.find("{")
     brace_end = clean.rfind("}")
     if brace_start >= 0 and brace_end > brace_start:

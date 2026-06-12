@@ -377,8 +377,13 @@ def run_trade_cycle():
     _extra_assets = {}
     if isinstance(overview, list):
         for _c in overview:
-            if _c.get("coin") in ("SPX", "PAXG"):
-                _extra_assets[_c["coin"]] = _c
+            coin_name = _c.get("coin")
+            if coin_name in ("SPX", "PAXG"):
+                _extra_assets[coin_name] = _c
+                if len(_extra_assets) == 2:
+                    break
+        # 后续只用 top 30，裁剪 overview 减少 JSON 序列化数据量
+        overview = overview[:30]
     state_text = f"""钱包模式：{wallet_mode}
 当前账户：{json.dumps(balance, ensure_ascii=False)}
 当前持仓：{json.dumps(positions, ensure_ascii=False)}

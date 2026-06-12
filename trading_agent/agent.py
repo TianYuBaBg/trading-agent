@@ -271,13 +271,13 @@ def run_trade_cycle():
         recall_context_parts.append(f"余额 ${balance.get('wallet_value') or 0}，可用 ${balance.get('available') or 0}")
     if isinstance(positions, list) and positions:
         pos_desc = "; ".join(
-            f"{p.get('coin', '?')} {p.get('direction', '?')} {abs(p.get('size', 0))}张 盈亏${p.get('pnl', 0)}"
+            f"{p.get('coin') or '?'} {p.get('direction') or '?'} {abs(p.get('size') or 0)}张 盈亏${p.get('pnl') or 0}"
             for p in positions
         )
         recall_context_parts.append(f"持仓: {pos_desc}")
     if isinstance(overview, list):
         top_coins = overview[:5]
-        mkt_desc = "; ".join(f"{c.get('coin', '?')} ${c.get('mid', 0)}" for c in top_coins)
+        mkt_desc = "; ".join(f"{c.get('coin') or '?'} ${c.get('mid') or 0}" for c in top_coins)
         recall_context_parts.append(f"行情: {mkt_desc}")
     recall_context = "，".join(recall_context_parts) or state_text
 

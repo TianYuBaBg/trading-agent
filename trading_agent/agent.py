@@ -199,6 +199,9 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None, _wallet_mod
         result = memory.add_lesson(lesson, args.get("tags"), args.get("outcome") or "")
         if result is None:
             return {"warning": "教训未保存：内容过短（少于5字符）"}
+        if isinstance(result, dict) and result.get("_duplicate"):
+            lesson_clean = {k: v for k, v in result.items() if k not in ("embedding", "_duplicate")}
+            return {"status": "已存在（重复）", "lesson": lesson_clean}
         # 去掉 embedding 向量（384 维 float 列表 ~2.3KB），避免浪费 AI 上下文 token
         lesson_clean = {k: v for k, v in result.items() if k != "embedding"} if isinstance(result, dict) else result
         return {"status": "已保存", "lesson": lesson_clean}

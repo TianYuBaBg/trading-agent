@@ -171,7 +171,7 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
         clean = lesson_text
         for existing in lessons:
             if clean == (existing.get("lesson") or "").strip():
-                return existing
+                return {**existing, "_duplicate": True}
 
         lesson = {
             "id": max(((l.get("id") or 0) for l in lessons), default=0) + 1,

@@ -423,7 +423,11 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
                     break
         if _need_leverage_update:
             lev_resp = ex.update_leverage(leverage, coin, is_buy)
-            lev_str = str(lev_resp)
+            # 用 json.dumps 而非 str()，因为 str(dict) 用单引号导致 "error" 匹配失效
+            try:
+                lev_str = json.dumps(lev_resp) if isinstance(lev_resp, (dict, list)) else str(lev_resp)
+            except (TypeError, ValueError):
+                lev_str = str(lev_resp)
             if '"error"' in lev_str.lower() or '"status":"err"' in lev_str:
                 return f"开仓失败：设置杠杆失败（{lev_str[:200]}）"
 

@@ -197,7 +197,9 @@ def get_orderbook(coin: str, depth: int = 5):
     try:
         depth = max(1, min(int(depth), 50))  # 限制在 1~50 档
         book = info.l2_snapshot(coin)
-        levels = book["levels"]
+        levels = book.get("levels")
+        if not levels or len(levels) < 2:
+            return f"获取深度失败：订单簿数据异常（levels 结构不完整）"
         # levels[0] = bids（买盘）, levels[1] = asks（卖盘）
         bids = [[float(b["px"]), float(b["sz"])] for b in levels[0][:depth]]
         asks = [[float(a["px"]), float(a["sz"])] for a in levels[1][:depth]]

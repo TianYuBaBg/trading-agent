@@ -205,6 +205,8 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None, _wallet_mod
     elif name == "transfer_spot_to_perp":
         if (_wallet_mode or hl_connector.get_wallet_mode()) == "api":
             return {"error": "转账失败：API 钱包模式不支持转账到永续合约，如需此功能请使用直连私钥模式"}
+        if "transfer_spot_to_perp" in _executed_ops:
+            return {"warning": "已在当前周期执行过转账，操作已跳过"}
         try:
             amount = float(args.get("amount") or 0)
         except (TypeError, ValueError):
@@ -215,7 +217,10 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None, _wallet_mod
                 amount = _balance.get("spot_value") or 0
             if amount <= 0:
                 return {"error": "转账失败：Spot 账户无可用 USDC"}
-        return hl_connector.transfer_spot_to_perp(amount)
+        result = hl_connector.transfer_spot_to_perp(amount)
+        if isinstance(result, dict) and result.get("status") == "ok":
+            _executed_ops.add("transfer_spot_to_perp")
+        return result
     return {"error": f"未知工具: {name}"}
 
 

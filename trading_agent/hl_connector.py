@@ -294,16 +294,18 @@ def get_balance():
         perp_value = float(cross.get("accountValue") or 0) + float(isolated.get("accountValue") or 0)
         margin_used = float(cross.get("totalMarginUsed") or 0) + float(isolated.get("totalMarginUsed") or 0)
 
-        # 也查 Spot 余额
+        # 也查 Spot 余额（API 钱包不支持 Spot 查询，跳过避免无意义的失败 RPC）
         spot_value = 0.0
-        try:
-            spot_state = info.spot_user_state(addr)
-            for b in (spot_state.get("balances") or []):
-                if b.get("coin") == "USDC":
-                    spot_value = float(b.get("total") or 0)
-                    break
-        except Exception:
-            pass  # API 钱包不支持 Spot 查询，属正常情况
+        _, _, wallet_mode = _load_wallet()
+        if wallet_mode != "api":
+            try:
+                spot_state = info.spot_user_state(addr)
+                for b in (spot_state.get("balances") or []):
+                    if b.get("coin") == "USDC":
+                        spot_value = float(b.get("total") or 0)
+                        break
+            except Exception:
+                pass
 
         total = perp_value + spot_value
         return {
@@ -592,7 +594,7 @@ def _load_trades():
             trades = json.load(f)
         if isinstance(trades, list):
             return [t for t in trades if isinstance(t, dict)]
-    except (json.JSONDecodeError, ValueError):
+    except (json.JSONDecodeError, ValueError, OSError):
         pass
     # 文件损坏，备份
     backup = _TRADES_FILE + ".bak"

@@ -172,9 +172,12 @@ def get_market_overview():
             if ctx:
                 try:
                     item["volume"] = float(ctx.get("dayNtlVlm") or 0)
+                except (TypeError, ValueError):
+                    pass
+                try:
                     item["funding"] = float(ctx.get("funding") or 0)
                 except (TypeError, ValueError):
-                    pass  # 无法解析成交量/费率不影响价格
+                    pass
             overview.append(item)
         # 按成交量降序排列，流动性高的币种在前
         overview.sort(key=lambda x: x.get("volume") or 0, reverse=True)

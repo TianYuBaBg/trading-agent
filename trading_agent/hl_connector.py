@@ -433,9 +433,18 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
         if "error" in first:
             return f"开仓失败：{first['error']}"
         if "resting" in first:
-            return f"开仓未成交：订单未立即成交（挂单中）"
-        # 提取实际成交均价（avgPx），比 all_mids 更精确
-        current_price = _get_fill_price(statuses, current_price)
+            # 可能有部分成交，检查 filled 字段
+            partial = first.get("filled")
+            if partial and partial.get("avgPx") is not None:
+                current_price = float(partial["avgPx"])
+                filled_sz = float(partial.get("totalSz") or 0)
+                if filled_sz > 0:
+                    coin_size = filled_sz
+            else:
+                return f"开仓未成交：订单未立即成交（挂单中）"
+        else:
+            # 提取实际成交均价（avgPx），比 all_mids 更精确
+            current_price = _get_fill_price(statuses, current_price)
 
         trade_record = {
             "coin": coin,

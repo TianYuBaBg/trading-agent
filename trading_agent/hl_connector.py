@@ -291,7 +291,7 @@ def get_balance():
                     spot_value = float(b.get("total") or 0)
                     break
         except Exception:
-            pass
+            pass  # API 钱包不支持 Spot 查询，属正常情况
 
         total = perp_value + spot_value
         return {

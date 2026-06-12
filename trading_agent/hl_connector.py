@@ -397,6 +397,8 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
                 pos_list = _positions
             else:
                 pos_list = get_positions()
+                if isinstance(pos_list, str):
+                    return f"开仓失败：获取持仓失败，为安全起见拒绝开仓（{pos_list}）"
             existing_notional = 0
             if isinstance(pos_list, list):
                 for p in pos_list:

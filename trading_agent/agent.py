@@ -548,7 +548,7 @@ def run_review():
         lesson_response = _get_client().chat.completions.create(
             model=config.DEEPSEEK_MODEL,
             messages=[
-                {"role": "system", "content": "从以下交易复盘分析中提取 1-2 条最重要的教训，以 JSON 格式返回：{\"lessons\": [{\"text\": \"教训内容\", \"tags\": [\"标签1\", \"标签2\"]}]}"},
+                {"role": "system", "content": "从以下交易复盘分析中提取 1-2 条最重要的教训，以 JSON 格式返回：{\"lessons\": [{\"text\": \"教训内容\", \"tags\": [\"标签1\", \"标签2\"], \"outcome\": \"亏损/盈利金额\"}]}"},
                 {"role": "user", "content": analysis},
             ],
             temperature=0.7,

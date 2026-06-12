@@ -69,7 +69,7 @@ def _load_lessons():
             if isinstance(data, list):
                 _lessons_cache = [l for l in data if isinstance(l, dict)]
                 return _lessons_cache
-        except (json.JSONDecodeError, ValueError):
+        except (json.JSONDecodeError, ValueError, OSError):
             pass
         # 文件损坏或非 list，备份并重建
         backup = _LESSONS_FILE + ".bak"
@@ -78,8 +78,11 @@ def _load_lessons():
         except Exception:
             pass
         print(f"  [记忆] lessons.json 损坏，已备份到 {backup}，重新创建")
-        with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
-            json.dump([], f, ensure_ascii=False, indent=2)
+        try:
+            with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
+                json.dump([], f, ensure_ascii=False, indent=2)
+        except OSError:
+            print("  [记忆] 无法重建 lessons.json")
         _lessons_cache = []
         _cjk_cache.clear()
         return []

@@ -403,6 +403,9 @@ def run_trade_cycle():
         top_coins = overview[:5]
         mkt_desc = "; ".join(f"{c.get('coin') or '?'} ${c.get('mid') or 0}" for c in top_coins)
         recall_context_parts.append(f"行情: {mkt_desc}")
+        if _extra_assets:
+            _ea_desc = "; ".join(f"{c} ${d.get('mid') or 0}" for c, d in _extra_assets.items())
+            recall_context_parts.append(f"非加密: {_ea_desc}")
     recall_context = "，".join(recall_context_parts) or state_text
 
     # ---- 第 2 步：回想教训 ----

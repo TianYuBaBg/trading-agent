@@ -312,6 +312,21 @@ def run_trade_cycle():
                         "lesson_to_save": "",
                     }
 
+    # 账户余额为 0 时跳过 AI 调用（节约 API 费用）
+    wallet_value = balance.get("wallet_value") or 0
+    if wallet_value <= 0:
+        msg = "账户余额为 0，跳过交易周期，等待充值 USDC"
+        print(f"  [Agent] {msg}")
+        return {
+            "error": msg,
+            "reply": "账户余额为 0，请先充值 USDC",
+            "state": json.dumps(balance, ensure_ascii=False),
+            "tool_results": [],
+            "thought": msg,
+            "need_review": False,
+            "lesson_to_save": "",
+        }
+
     wallet_mode = hl_connector.get_wallet_mode() or "未配置"
     state_text = f"""
 钱包模式：{wallet_mode}

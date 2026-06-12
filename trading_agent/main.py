@@ -237,15 +237,21 @@ def auto_mode():
     def _check_input():
         nonlocal running
         while running:
-            cmd = input()
-            if cmd.strip() == "":
-                running = False
-                print("\n切换到手动模式")
-            elif cmd == "复盘":
-                agent.run_review()
-            elif cmd == "状态":
-                print(f"余额: {hl_connector.get_balance()}")
-                print(f"持仓: {hl_connector.get_positions()}")
+            try:
+                cmd = input()
+            except (EOFError, OSError):
+                break
+            try:
+                if cmd.strip() == "":
+                    running = False
+                    print("\n切换到手动模式")
+                elif cmd == "复盘":
+                    agent.run_review()
+                elif cmd == "状态":
+                    print(f"余额: {hl_connector.get_balance()}")
+                    print(f"持仓: {hl_connector.get_positions()}")
+            except Exception as e:
+                print(f"  [输入线程] 命令执行异常: {e}")
 
     # 开一个线程监听键盘输入
     input_thread = threading.Thread(target=_check_input, daemon=True)

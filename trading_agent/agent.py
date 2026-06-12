@@ -275,6 +275,12 @@ def run_trade_cycle():
     3. 保存教训、返回结果
     """
     _reset_executed_ops()
+    # ---- 检查 API Key（在 RPC 调用前快速失败，避免浪费）----
+    if not config.DEEPSEEK_API_KEY:
+        msg = "DEEPSEEK_API_KEY 未配置，跳过交易周期"
+        print(f"  [Agent] {msg}")
+        return {"error": msg, "reply": msg, "state": "", "tool_results": [], "thought": msg, "need_review": False, "lesson_to_save": ""}
+
     # ---- 第 1 步：收集数据 ----
     print(f"\n{'='*40}")
     print(f"交易循环开始：{datetime.datetime.now().strftime('%H:%M:%S')}")

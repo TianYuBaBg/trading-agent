@@ -126,9 +126,9 @@ def _truncate_results(items: list, max_len: int = 8000) -> str:
 
 # ========== 执行工具调用 ==========
 
-def _run_tool(name: str, args: dict, _balance=None, _positions=None, _wallet_mode=None):
+def _run_tool(name: str, args: dict, _balance=None, _positions=None):
     """执行一个工具调用并返回原始 Python 对象（非 JSON 字符串）
-    _balance/_positions/_wallet_mode: 调用方已查询的数据，用于避免重复 RPC"""
+    _balance/_positions: 调用方已查询的数据，用于避免重复 RPC"""
 
     if not isinstance(args, dict):
         return {"error": f"工具 {name} 参数格式错误：需要 JSON 对象，收到 {type(args).__name__}"}
@@ -185,6 +185,8 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None, _wallet_mod
             return {"error": f"开仓失败：size 参数格式无效（{size}）"}
         try:
             leverage_val = int(float(args.get("leverage") or 1))
+            if leverage_val <= 0 or leverage_val > config.MAX_LEVERAGE:
+                return {"error": f"开仓失败：杠杆 {leverage_val}x 超出允许范围 [1, {config.MAX_LEVERAGE}]"}
         except (TypeError, ValueError):
             return {"error": f"开仓失败：leverage 参数格式无效（{args.get('leverage')}）"}
         result = hl_connector.open_trade(coin, side, size_val, leverage_val, _balance=_balance, _positions=_positions)
@@ -469,7 +471,7 @@ def run_trade_cycle():
             args = tc.get("args") or {}
             print(f"  [Agent] 调工具: {name}({args})")
             try:
-                result = _run_tool(name, args, _balance=balance, _positions=positions, _wallet_mode=wallet_mode)
+                result = _run_tool(name, args, _balance=balance, _positions=positions)
             except Exception as e:
                 result = {"error": f"工具 {name} 执行异常: {e}"}
             # 交易或转账成功后刷新 balance/positions，避免后续仓位检查用旧数据

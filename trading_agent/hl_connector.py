@@ -425,9 +425,10 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
                 for p in pos_list:
                     coin_price = mids.get(p["coin"])
                     if coin_price is None or float(coin_price) == 0:
-                        coin_price = p.get("entry_px") or 0
-                    if float(coin_price) <= 0:
-                        continue
+                        coin_price = p.get("entry_px")
+                    if not coin_price or float(coin_price) <= 0:
+                        # 无法获取该持仓币种的价格，保守拒绝开仓
+                        return f"开仓失败：无法获取 {p.get('coin')} 持仓的准确价格，为安全起见拒绝开仓"
                     existing_notional += abs(p["size"]) * float(coin_price)
             actual_new = coin_size * current_price
             total_notional = existing_notional + actual_new

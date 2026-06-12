@@ -516,9 +516,18 @@ def close_trade(coin: str, size=None, _positions=None):
         if "error" in first:
             return f"平仓失败：{first['error']}"
         if "resting" in first:
-            return f"平仓未成交：订单未立即成交（挂单中）"
-        # 提取实际成交价（avgPx），比 all_mids 的中间价更精确
-        current_price = _get_fill_price(statuses, current_price)
+            # 可能有部分成交，检查 filled 字段
+            partial = first.get("filled")
+            if partial and partial.get("avgPx") is not None:
+                current_price = float(partial["avgPx"])
+                filled_sz = float(partial.get("totalSz") or 0)
+                if filled_sz > 0:
+                    close_sz = filled_sz  # 覆盖为实际成交数量
+            else:
+                return f"平仓未成交：订单未立即成交（挂单中）"
+        else:
+            # 提取实际成交价（avgPx），比 all_mids 的中间价更精确
+            current_price = _get_fill_price(statuses, current_price)
 
         # 计算盈亏
         pnl = (current_price - pos["entry_px"]) * close_sz

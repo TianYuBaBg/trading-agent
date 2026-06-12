@@ -302,17 +302,16 @@ def get_balance():
         perp_value = float(cross.get("accountValue") or 0) + float(isolated.get("accountValue") or 0)
         margin_used = float(cross.get("totalMarginUsed") or 0) + float(isolated.get("totalMarginUsed") or 0)
 
-        # 也查 Spot 余额（API 钱包不支持 Spot 查询，跳过避免无意义的失败 RPC）
+        # 查询 Spot 余额（API 钱包模式也可查询，仅转账受限）
         spot_value = 0.0
-        if get_wallet_mode() != "api":
-            try:
-                spot_state = info.spot_user_state(addr)
-                for b in (spot_state.get("balances") or []):
-                    if b.get("coin") == "USDC":
-                        spot_value = float(b.get("total") or 0)
-                        break
-            except Exception:
-                pass
+        try:
+            spot_state = info.spot_user_state(addr)
+            for b in (spot_state.get("balances") or []):
+                if b.get("coin") == "USDC":
+                    spot_value = float(b.get("total") or 0)
+                    break
+        except Exception:
+            pass
 
         total = perp_value + spot_value
         return {

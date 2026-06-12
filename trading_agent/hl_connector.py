@@ -573,13 +573,14 @@ def close_trade(coin: str, size=None, _positions=None):
         pnl = (current_price - pos["entry_px"]) * close_sz
         if pos["size"] < 0:  # 空单
             pnl = -pnl
+        side = "short" if pos["size"] < 0 else "long"
 
         # 计算剩余数量，全平时才更新交易记录（避免部分平仓标记已平仓后，后续平仓找不到记录）
         sz_decimals = _get_sz_decimals(coin)
         remaining = round(max(0, max_sz - close_sz), sz_decimals)
         if remaining == 0:
             try:
-                _update_trade_close(coin, current_price, pnl)
+                _update_trade_close(coin, current_price, pnl, side)
             except Exception as e:
                 print(f"  [平仓] 更新交易记录失败（不影响订单）: {e}")
 
@@ -634,16 +635,16 @@ def _save_trade(trade: dict):
         json.dump(trades, f, ensure_ascii=False, indent=2)
 
 
-def _update_trade_close(coin: str, exit_price: float, pnl: float):
-    """平仓后更新交易记录：标记最近一笔该币种的开仓交易为已平仓"""
+def _update_trade_close(coin: str, exit_price: float, pnl: float, side: str = ""):
+    """平仓后更新交易记录：标记最近一笔该币种同方向的开仓交易为已平仓"""
     if not os.path.exists(_TRADES_FILE):
         return
     trades = _load_trades()
-    # 标记该币种最近一笔未平仓记录为已平仓
+    # 标记该币种最近一笔未平仓记录为已平仓（按方向匹配，避免多方向时关错记录）
     now = datetime.datetime.now().isoformat()
     found = False
     for t in reversed(trades):
-        if t.get("coin") == coin and not t.get("close_time"):
+        if t.get("coin") == coin and t.get("side") == side and not t.get("close_time"):
             t["close_time"] = now
             t["exit_price"] = exit_price
             t["pnl"] = round(pnl, 2)

@@ -90,7 +90,7 @@ def _build_system_prompt():
 
 # ========== 防重复执行 ==========
 # 记录当前周期已执行过的操作，防止 AI 同一轮重复开仓
-_executed_ops: set = set()
+_executed_ops: set[str] = set()
 
 # 工具结果排序优先级：交易操作优先，避免截断丢失关键信息
 _KEY_OPS = {"open_trade", "close_trade", "transfer_spot_to_perp", "add_lesson"}

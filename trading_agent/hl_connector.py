@@ -350,7 +350,9 @@ def _get_sz_decimals(coin: str) -> int:
             if name:
                 szd = asset.get("szDecimals")
                 _sz_decimals_cache[name] = szd if szd is not None else 4
-        return _sz_decimals_cache.get(coin, 4)
+        result = _sz_decimals_cache.get(coin, 4)
+        _sz_decimals_cache[coin] = result  # 未找到的 coin 也缓存默认值，避免重复 meta()
+        return result
     except Exception:
         _sz_decimals_cache[coin] = 4  # 异常时也缓存默认值，避免重复请求 meta()
         return 4

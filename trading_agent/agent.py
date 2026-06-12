@@ -181,6 +181,8 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
             return {"warning": "教训未保存：内容过短（少于5字符）"}
         return {"status": "已保存", "lesson": result}
     elif name == "transfer_spot_to_perp":
+        if hl_connector.get_wallet_mode() == "api":
+            return {"error": "转账失败：API 钱包模式不支持转账到永续合约，如需此功能请使用直连私钥模式"}
         try:
             amount = float(args.get("amount") or 0)
         except (TypeError, ValueError):

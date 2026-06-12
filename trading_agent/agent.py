@@ -134,12 +134,18 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None, _wallet_mod
     if name == "get_market_overview":
         return hl_connector.get_market_overview()
     elif name == "get_orderbook":
-        return hl_connector.get_orderbook(str(args.get("coin") or "BTC").strip().upper(), int(args.get("depth") or 5))
+        coin = str(args.get("coin") or "").strip().upper()
+        if not coin:
+            return {"error": "获取订单簿失败：缺少必填参数 coin"}
+        return hl_connector.get_orderbook(coin, int(args.get("depth") or 5))
     elif name == "get_candles":
+        coin = str(args.get("coin") or "").strip().upper()
+        if not coin:
+            return {"error": "获取K线失败：缺少必填参数 coin"}
         interval = str(args.get("interval") or "1h").strip().lower()
         if interval not in ("1m", "5m", "15m", "1h", "4h", "1d"):
             return {"error": f"get_candles interval 参数无效：'{interval}'，有效值：1m/5m/15m/1h/4h/1d"}
-        return hl_connector.get_candles(str(args.get("coin") or "BTC").strip().upper(), interval, int(args.get("hours") or 24))
+        return hl_connector.get_candles(coin, interval, int(args.get("hours") or 24))
     elif name == "get_positions":
         return hl_connector.get_positions()
     elif name == "get_balance":

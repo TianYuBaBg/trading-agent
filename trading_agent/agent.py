@@ -377,6 +377,18 @@ def run_trade_cycle():
                     "lesson_to_save": "",
                 }
 
+    # Perp 保证金不足且无持仓时直接跳过，不浪费 AI 调用
+    _perp_free = balance.get("perp_available") if isinstance(balance, dict) else 0
+    if isinstance(positions, list) and not positions and (_perp_free is not None and _perp_free <= 0):
+        msg = f"永续合约可用 ${_perp_free:.2f}，无持仓，跳过"
+        print(f"  [Agent] {msg}")
+        return {
+            "error": msg, "reply": "", "thought": msg,
+            "need_review": False, "tool_results": [],
+            "state": json.dumps(balance, ensure_ascii=False),
+            "lesson_to_save": "",
+        }
+
     wallet_mode = hl_connector.get_wallet_mode() or "未配置"
     _extra_assets = {}
     if isinstance(overview, list):

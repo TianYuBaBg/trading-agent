@@ -278,7 +278,7 @@ def get_positions():
                 "direction": "long" if float(szi) > 0 else "short",
                 "entry_px": float(p.get("entryPx") or 0),
                 "pnl": float(p.get("unrealizedPnl") or 0),
-                "leverage": float(lev or 1),
+                "leverage": float(lev),
                 "liquidation_px": float(p.get("liquidationPx") or 0),
             })
         return positions

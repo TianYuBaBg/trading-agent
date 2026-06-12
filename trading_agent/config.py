@@ -13,7 +13,8 @@ import os
 import json
 
 # DeepSeek - 环境变量 > data/config.json > 报错
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+_raw = os.environ.get("DEEPSEEK_API_KEY")
+DEEPSEEK_API_KEY = _raw.strip() if _raw else ""
 if not DEEPSEEK_API_KEY:
     # fallback: 从 data/config.json 读取
     _cfg_path = os.path.join(os.path.dirname(__file__), "data", "config.json")
@@ -21,7 +22,7 @@ if not DEEPSEEK_API_KEY:
         try:
             with open(_cfg_path, encoding="utf-8") as _f:
                 _cfg = json.load(_f)
-            DEEPSEEK_API_KEY = _cfg.get("deepseek_api_key") or ""
+            DEEPSEEK_API_KEY = (_cfg.get("deepseek_api_key") or "").strip()
         except Exception as _e:
             print(f"  [配置] 读取 data/config.json 失败: {_e}")
 if not DEEPSEEK_API_KEY:

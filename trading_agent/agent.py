@@ -137,7 +137,11 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None, _wallet_mod
         coin = str(args.get("coin") or "").strip().upper()
         if not coin:
             return {"error": "获取订单簿失败：缺少必填参数 coin"}
-        return hl_connector.get_orderbook(coin, int(args.get("depth") or 5))
+        try:
+            depth = int(args.get("depth") or 5)
+        except (TypeError, ValueError):
+            return {"error": f"get_orderbook depth 参数无效：'{args.get('depth')}'"}
+        return hl_connector.get_orderbook(coin, depth)
     elif name == "get_candles":
         coin = str(args.get("coin") or "").strip().upper()
         if not coin:
@@ -145,7 +149,11 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None, _wallet_mod
         interval = str(args.get("interval") or "1h").strip().lower()
         if interval not in ("1m", "5m", "15m", "1h", "4h", "1d"):
             return {"error": f"get_candles interval 参数无效：'{interval}'，有效值：1m/5m/15m/1h/4h/1d"}
-        return hl_connector.get_candles(coin, interval, int(args.get("hours") or 24))
+        try:
+            hours = int(args.get("hours") or 24)
+        except (TypeError, ValueError):
+            return {"error": f"get_candles hours 参数无效：'{args.get('hours')}'"}
+        return hl_connector.get_candles(coin, interval, hours)
     elif name == "get_positions":
         return hl_connector.get_positions()
     elif name == "get_balance":

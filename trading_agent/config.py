@@ -49,10 +49,10 @@ MAX_LEVERAGE = 3  # 最高 3 倍
 # 每日最大亏损：超过这个比例就停止自动交易
 DAILY_LOSS_LIMIT_PCT = -5  # -5%，日亏 5% 就停
 
-# 只允许交易的币种（空 = 不限）
-ALLOWED_COINS = []  # 例如 ["BTC", "ETH"]
-# 自动转大写，避免 agent.py 中用 .upper() 比较时大小写不匹配
-ALLOWED_COINS = [c.strip().upper() for c in ALLOWED_COINS]
+# 只允许交易的币种（在下方列表中添加，自动转大写；空 = 不限）
+# 例如：_ALLOWED_COINS = ["BTC", "ETH"]
+_ALLOWED_COINS = []
+ALLOWED_COINS = [c.strip().upper() for c in _ALLOWED_COINS]
 
 # 自动交易间隔（秒）- 在 main.py 的 --auto 模式中使用
 AUTO_TRADE_INTERVAL = 300  # 5 分钟

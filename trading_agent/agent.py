@@ -12,7 +12,6 @@
 
 import json
 import datetime
-from functools import lru_cache
 from openai import OpenAI, AuthenticationError
 from trading_agent import config
 from trading_agent import hl_connector
@@ -51,7 +50,6 @@ _TOOL_DESCRIPTIONS = {
 
 # ========== 构建系统提示词 ==========
 
-@lru_cache(maxsize=1)
 def _build_system_prompt():
     return f"""你是 Hyperliquid 永续合约交易员，核心目标是积极发现机会并盈利。
 
@@ -308,8 +306,6 @@ def run_trade_cycle():
     3. 保存教训、返回结果
     """
     _reset_executed_ops()
-    # 清除系统提示词缓存，使 prompt 修改立即生效（如规则更新）
-    _build_system_prompt.cache_clear()
     # ---- 检查 API Key（在 RPC 调用前快速失败，避免浪费）----
     if not config.DEEPSEEK_API_KEY:
         msg = "DEEPSEEK_API_KEY 未配置，跳过交易周期"

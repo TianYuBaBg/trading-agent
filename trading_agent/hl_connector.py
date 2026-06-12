@@ -149,6 +149,15 @@ def get_market_overview():
         meta_ctxs = info.meta_and_asset_ctxs()
         universe = meta_ctxs[0].get("universe") or []
         ctxs = meta_ctxs[1] if len(meta_ctxs) > 1 else []
+        # 顺带预填 sz_decimals 缓存，避免 _get_sz_decimals 重复调 info.meta()
+        global _sz_decimals_cache, _sz_decimals_loaded
+        if not _sz_decimals_loaded:
+            for asset in universe:
+                name = asset.get("name")
+                if name:
+                    szd = asset.get("szDecimals")
+                    _sz_decimals_cache[name] = szd if szd is not None else 4
+            _sz_decimals_loaded = True
         # 建立 coin -> ctx 的映射（按下标匹配）
         coin_to_ctx = {}
         for i, asset in enumerate(universe):
@@ -341,29 +350,26 @@ def _get_fill_price(statuses: list, fallback: float) -> float:
 
 
 def _get_sz_decimals(coin: str) -> int:
-    """获取币种的数量精度（szDecimals），结果缓存（一次 meta() 缓存所有币种）"""
+    """获取币种的数量精度（szDecimals），结果缓存（get_market_overview 预填）"""
     global _sz_decimals_cache, _sz_decimals_loaded
+    # 大多数情况 get_market_overview 已预填，直接命中缓存
     if coin in _sz_decimals_cache:
         return _sz_decimals_cache[coin]
-    # 缓存已加载（meta() 曾成功过），表中没有的币直接给默认值，无需重复 RPC
+    # 缓存已加载但表中无此币（非标准币种），给默认值
     if _sz_decimals_loaded:
-        _sz_decimals_cache[coin] = 4
         return 4
+    # 兜底：仅当直接调此函数而非先调 get_market_overview 时走到
     info = _ensure_info()
     try:
         meta = info.meta()
         _sz_decimals_loaded = True
-        # 一次遍历缓存所有币种的 szDecimals，避免每个新币种都调一次 meta()
         for asset in (meta.get("universe") or []):
             name = asset.get("name")
             if name:
                 szd = asset.get("szDecimals")
                 _sz_decimals_cache[name] = szd if szd is not None else 4
-        result = _sz_decimals_cache.get(coin, 4)
-        _sz_decimals_cache[coin] = result  # 未找到的 coin 也缓存默认值，避免重复 meta()
-        return result
+        return _sz_decimals_cache.get(coin, 4)
     except Exception:
-        _sz_decimals_cache[coin] = 4  # 异常时缓存当前币默认值，但允许下一周期重试 meta()
         return 4
 
 

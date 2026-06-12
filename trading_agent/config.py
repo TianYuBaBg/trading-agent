@@ -18,6 +18,7 @@ os.makedirs(DATA_DIR, exist_ok=True)
 
 # 配置文件路径（被 config.py 和 hl_connector.py 共用，集中管理避免重复定义）
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "data", "config.json")
+os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
 
 # DeepSeek - 环境变量 > data/config.json > 报错
 _raw = os.environ.get("DEEPSEEK_API_KEY")

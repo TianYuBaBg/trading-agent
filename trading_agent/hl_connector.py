@@ -558,16 +558,16 @@ def close_trade(coin: str, size=None, _positions=None):
         if pos["size"] < 0:  # 空单
             pnl = -pnl
 
-        # 更新交易记录（不影响平仓结果，失败只打日志）
-        try:
-            _update_trade_close(coin, current_price, pnl)
-        except Exception as e:
-            print(f"  [平仓] 更新交易记录失败（不影响订单）: {e}")
-
-        # 返回剩余数量，方便调用方判断是否为全平（remaining=0 表示已全部平完）
+        # 计算剩余数量，全平时才更新交易记录（避免部分平仓标记已平仓后，后续平仓找不到记录）
         sz_decimals = _get_sz_decimals(coin)
         remaining = round(max(0, max_sz - close_sz), sz_decimals)
+        if remaining == 0:
+            try:
+                _update_trade_close(coin, current_price, pnl)
+            except Exception as e:
+                print(f"  [平仓] 更新交易记录失败（不影响订单）: {e}")
 
+        # 返回剩余数量，方便调用方判断是否为全平（remaining=0 表示已全部平完）
         return {
             "status": "已平仓",
             "coin": coin,

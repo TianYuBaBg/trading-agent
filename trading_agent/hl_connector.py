@@ -695,9 +695,9 @@ def get_trade_history(days: int = 7):
                 fill_time = int(fill_time)
             except (TypeError, ValueError):
                 continue
-            # Hyperliquid 按时间倒序返回，遇到 cutoff 后即可停止
+            # 跳过 cutoff 之前的成交记录
             if fill_time < cutoff:
-                break
+                continue
             px = f.get("px")
             sz = f.get("sz")
             if px is None or sz is None:

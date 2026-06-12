@@ -317,7 +317,7 @@ def run_trade_cycle():
     if wallet_value <= 0:
         msg = "账户余额为 0，跳过交易周期，等待充值 USDC"
         print(f"  [Agent] {msg}")
-        return {"error": msg, "reply": "账户余额为 0，请先充值 USDC", "state": json.dumps(balance, ensure_ascii=False),
+        return {"error": msg, "reply": msg, "state": json.dumps(balance, ensure_ascii=False),
                 "tool_results": [], "thought": msg, "need_review": False, "lesson_to_save": ""}
     # 低于最小开仓所需金额时提前跳过，避免浪费 RPC 和 AI 调用
     min_value = 10.0 / (config.MAX_POSITION_SIZE_PCT / 100)

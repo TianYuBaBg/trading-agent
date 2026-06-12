@@ -517,6 +517,8 @@ def run_trade_cycle():
         elif isinstance(lesson_to_save, str):
             if not memory.add_lesson(lesson_to_save):
                 print(f"  [Agent] 教训保存跳过：内容过短（少于5字符）")
+        else:
+            print(f"  [Agent] 教训保存跳过：lesson_to_save 类型异常（{type(lesson_to_save).__name__}），raw={str(lesson_to_save)[:100]}")
 
     return {
         "thought": final_thought,

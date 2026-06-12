@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from openai import OpenAI
 from trading_agent import config, hl_connector, memory
-from trading_agent.agent import _build_system_prompt, _run_tool, _TOOL_DESCRIPTIONS
+from trading_agent.agent import _build_system_prompt, _run_tool, _TOOL_DESCRIPTIONS, _extract_json
 
 client = OpenAI(api_key=config.DEEPSEEK_API_KEY, base_url=config.DEEPSEEK_BASE_URL)
 
@@ -27,34 +27,52 @@ messages = [
     {"role": "user", "content": f"## 当前状态\n{state_text}\n## 相关历史教训\n{lessons_text}\n## 请分析并决定下一步操作"},
 ]
 
+
+def _truncate_safe(results: list, max_len: int = 8000) -> str:
+    """在完整 item 边界截断 JSON 字符串，避免切在字符串中间"""
+    payload = json.dumps(results, ensure_ascii=False)
+    if len(payload) <= max_len:
+        return payload
+    safe = []
+    size = 0
+    for item in results:
+        s = json.dumps(item, ensure_ascii=False)
+        needed = len(s) + (2 if safe else 0)
+        if size + needed > max_len:
+            break
+        safe.append(s)
+        size += needed
+    return "[" + ",".join(safe) + "]"
+
+
 for round_idx in range(3):
     print(f"\n{'='*40}")
     print(f"  ReAct 第 {round_idx+1} 轮")
     print(f"{'='*40}")
 
-    resp = client.chat.completions.create(
-        model=config.DEEPSEEK_MODEL,
-        messages=messages,
-        temperature=0.7,
-        response_format={"type": "json_object"},
-    )
+    try:
+        resp = client.chat.completions.create(
+            model=config.DEEPSEEK_MODEL,
+            messages=messages,
+            temperature=0.7,
+            response_format={"type": "json_object"},
+        )
+        if not resp.choices:
+            print("  [错误] AI 返回空响应")
+            break
+        decision = _extract_json(resp.choices[0].message.content)
+        if "error" in decision:
+            print(f"  [错误] JSON 解析失败: {decision['error']}")
+            break
+    except Exception as e:
+        print(f"  [错误] API 调用异常: {e}")
+        break
 
-    raw = resp.choices[0].message.content
-    # 提取 JSON
-    clean = raw.strip()
-    if clean.startswith("```"):
-        clean = clean.split("\n", 1)[-1]
-        clean = clean.rsplit("```", 1)[0].strip()
-    brace_start = clean.find("{")
-    brace_end = clean.rfind("}")
-    if brace_start >= 0 and brace_end > brace_start:
-        clean = clean[brace_start:brace_end + 1]
-
-    decision = json.loads(clean)
-
-    thought = decision.get("thought", "")
-    reply = decision.get("reply", "")
-    tool_calls = decision.get("tool_calls", [])
+    thought = decision.get("thought") or ""
+    reply = decision.get("reply") or ""
+    tool_calls = decision.get("tool_calls") or []
+    if not isinstance(tool_calls, list):
+        tool_calls = []
 
     print(f"  思考: {thought[:300]}")
     print(f"  回复: {reply[:200]}")
@@ -69,14 +87,14 @@ for round_idx in range(3):
     # 执行所有工具，收集结果
     all_results = []
     for tc in tool_calls:
-        name = tc.get("name", "")
-        args = tc.get("args", {})
+        name = tc.get("name") or ""
+        args = tc.get("args") or {}
         print(f"  → 执行: {name}{args}")
         result = _run_tool(name, args)
         print(f"  → 结果: {str(result)[:100]}")
         all_results.append({"tool": name, "result": result})
 
-    # 把全部结果一次性送回给 AI
+    # 把全部结果一次性送回给 AI（item 边界安全截断）
     messages.append({"role": "assistant", "content": json.dumps(decision, ensure_ascii=False)})
-    results_str = json.dumps(all_results, ensure_ascii=False)[:8000]
+    results_str = _truncate_safe(all_results)
     messages.append({"role": "user", "content": f"## 以下是工具返回结果\n{results_str}\n## 根据这些新数据，分析并得出最终决策。\n## 同时注意：以下工具可能有失败的情况，请检查原因，不要假设操作已成功执行。\n## tool_calls为空 = 最终决策。如需开仓用 open_trade，平仓用 close_trade。"})

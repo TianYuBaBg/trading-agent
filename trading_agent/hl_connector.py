@@ -28,6 +28,12 @@ _CONFIG_PATH = os.path.join(os.path.dirname(__file__), "data", "config.json")
 _wallet_cache = None
 
 
+def get_wallet_mode() -> str | None:
+    """返回钱包模式: 'api', 'direct', 或 None（未配置）"""
+    _, _, mode = _load_wallet()
+    return mode
+
+
 def _load_wallet():
     """
     从 data/config.json 读取钱包配置（结果缓存，仅首次读取文件）。

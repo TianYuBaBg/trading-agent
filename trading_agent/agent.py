@@ -280,7 +280,9 @@ def run_trade_cycle():
                         "lesson_to_save": "",
                     }
 
+    wallet_mode = hl_connector.get_wallet_mode() or "未配置"
     state_text = f"""
+钱包模式：{wallet_mode}
 当前账户：{json.dumps(balance, ensure_ascii=False)}
 当前持仓：{json.dumps(positions, ensure_ascii=False)}
 市场概况：{json.dumps(overview[:20], ensure_ascii=False)}

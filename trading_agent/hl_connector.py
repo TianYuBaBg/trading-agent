@@ -316,7 +316,6 @@ def get_balance():
         return {
             "wallet_value": round(total, 2),
             "margin_used": round(margin_used, 2),
-            "perp_available": round(perp_value - margin_used, 2),
             "available": round(total - margin_used, 2),
             "perp_value": round(perp_value, 2),
             "spot_value": round(spot_value, 2),
@@ -437,15 +436,12 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
                 min_add_info = f"，最小开仓额 $10 已将请求的 ${size:.1f} 提升至 ${actual_new:.1f}" if actual_new > size else ""
                 return f"开仓失败：已有 ${existing_notional:.1f} + 实际开仓 ${actual_new:.1f} = ${total_notional:.1f} 超过限额 ${max_allowed:.1f}（{config.MAX_POSITION_SIZE_PCT}%）{min_add_info}，最多还能开 ${max(0, max_allowed - existing_notional):.1f}"
 
-            # 检查保证金充足性：永续合约账户余额需覆盖新开仓的保证金要求
-            # 注意 total_value 包含 Spot 余额，但 Spot 不能用作永续保证金（API 钱包无法转账）
+            # 检查保证金充足性：账户总资金（含 Spot）都可作为保证金
             if isinstance(_balance, dict):
-                perp_bal = _balance.get("perp_value") or 0
-                margin_used = _balance.get("margin_used") or 0
-                free_perp = perp_bal - margin_used
+                avail = _balance.get("available") or 0
                 required_margin = actual_new / leverage
-                if required_margin > free_perp + 0.01:  # 允许 $0.01 的浮点误差
-                    return f"开仓失败：需要保证金 ${required_margin:.1f}，永续合约可用 ${max(0, free_perp):.1f}（余额 ${perp_bal:.1f} - 已用 ${margin_used:.1f}），请减小仓位或转入 USDC"
+                if required_margin > avail + 0.01:  # 允许 $0.01 的浮点误差
+                    return f"开仓失败：需要保证金 ${required_margin:.1f}，账户可用 ${max(0, avail):.1f}，请减小仓位"
         except Exception as e:
             return f"开仓失败：仓位限制检查异常（{e}），为安全起见拒绝开仓"
 

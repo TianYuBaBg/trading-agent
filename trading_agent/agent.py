@@ -61,7 +61,7 @@ def _build_system_prompt():
 3. 每日亏损超过 {abs(config.DAILY_LOSS_LIMIT_PCT)}% 时停止交易
 4. 每次开仓前先回想相关教训
 5. 平仓后复盘并记录教训
-6. 开仓前计算可开金额：wallet_value * {config.MAX_POSITION_SIZE_PCT}% - 已有持仓名义价值（持仓数量 x 价格），选择在此范围内的金额。注意杠杆不影响名义价值，只影响保证金占用。开仓需要永续合约账户有足够保证金（名义价值/杠杆），Spot 余额不能用作永续保证金
+6. 开仓前计算可开金额：wallet_value * {config.MAX_POSITION_SIZE_PCT}% - 已有持仓名义价值（持仓数量 x 价格），选择在此范围内的金额。注意杠杆不影响名义价值，只影响保证金占用。开仓需要账户有足够可用资金（available = wallet_value - 已用保证金），账户总资金（含 Spot）都可作为保证金
 7. **核心目标：盈利。积极寻找交易机会，小仓位试单、发现趋势加仓**
 8. 小账户可用高杠杆（3x）提高资金利用率，每笔赚 2-5% 就很好
 9. 不要只会等待，没有明确风险信号就该尝试入场
@@ -376,18 +376,6 @@ def run_trade_cycle():
                     "state": f"余额：{json.dumps(balance, ensure_ascii=False)}\n今日盈亏：{today_pnl:.2f}",
                     "lesson_to_save": "",
                 }
-
-    # Perp 保证金不足且无持仓时直接跳过，不浪费 AI 调用
-    _perp_free = balance.get("perp_available") if isinstance(balance, dict) else 0
-    if isinstance(positions, list) and not positions and (_perp_free is not None and _perp_free <= 0):
-        msg = f"永续合约可用 ${_perp_free:.2f}，无持仓，跳过"
-        print(f"  [Agent] {msg}")
-        return {
-            "error": msg, "reply": "", "thought": msg,
-            "need_review": False, "tool_results": [],
-            "state": json.dumps(balance, ensure_ascii=False),
-            "lesson_to_save": "",
-        }
 
     wallet_mode = hl_connector.get_wallet_mode() or "未配置"
     _extra_assets = {}

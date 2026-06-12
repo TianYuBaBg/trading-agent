@@ -93,7 +93,7 @@ def _build_system_prompt():
 _executed_ops: set[str] = set()
 
 # 工具结果排序优先级：交易操作优先，避免截断丢失关键信息
-_KEY_OPS = {"open_trade", "close_trade", "transfer_spot_to_perp", "add_lesson"}
+_KEY_OPS = {"open_trade", "close_trade", "transfer_spot_to_perp"}
 
 
 def _reset_executed_ops():

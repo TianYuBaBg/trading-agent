@@ -110,6 +110,24 @@ def _increment_used(ids_to_inc, lessons=None):
                 json.dump(lessons, f, ensure_ascii=False, indent=2)
 
 
+# 教训中文字符集缓存，避免每次搜索都重复运行正则
+_cjk_cache: dict[int, set] = {}
+_cjk_cache_max = 256
+
+
+def _get_lesson_cjk(lesson: dict) -> set:
+    """提取教训的中文字符集（带缓存）"""
+    lid = lesson.get("id")
+    if lid is not None and lid in _cjk_cache:
+        return _cjk_cache[lid]
+    text = (lesson.get("lesson") or "").lower()
+    cjk = set(re.findall(r'[一-鿿]', text))
+    if lid is not None:
+        if len(_cjk_cache) < _cjk_cache_max:
+            _cjk_cache[lid] = cjk
+    return cjk
+
+
 def _keyword_score(lesson: dict, context_text: str, ctx_chinese: set) -> float:
     """计算一条教训与上下文文本的关键词匹配分数"""
     score = 0
@@ -122,7 +140,7 @@ def _keyword_score(lesson: dict, context_text: str, ctx_chinese: set) -> float:
         if kw in lesson_lower:
             score += 1
     if ctx_chinese:
-        lesson_cjk = set(re.findall(r'[一-鿿]', lesson_lower))
+        lesson_cjk = _get_lesson_cjk(lesson)
         overlap = len(ctx_chinese & lesson_cjk) / max(len(ctx_chinese), 1)
         score += overlap * 5
     return score

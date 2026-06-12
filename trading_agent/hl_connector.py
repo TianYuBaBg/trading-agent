@@ -467,8 +467,11 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
             "leverage": leverage,
         }
 
-        # 保存交易记录
-        _save_trade(trade_record)
+        # 保存交易记录（不影响开仓结果，失败只打日志）
+        try:
+            _save_trade(trade_record)
+        except Exception as e:
+            print(f"  [开仓] 保存交易记录失败（不影响订单）: {e}")
 
         return {"status": "已开仓", "trade": trade_record, "raw": str(result)[:200]}
     except Exception as e:
@@ -546,8 +549,11 @@ def close_trade(coin: str, size=None, _positions=None):
         if pos["size"] < 0:  # 空单
             pnl = -pnl
 
-        # 更新交易记录
-        _update_trade_close(coin, current_price, pnl)
+        # 更新交易记录（不影响平仓结果，失败只打日志）
+        try:
+            _update_trade_close(coin, current_price, pnl)
+        except Exception as e:
+            print(f"  [平仓] 更新交易记录失败（不影响订单）: {e}")
 
         # 返回剩余数量，方便调用方判断是否为全平（remaining=0 表示已全部平完）
         sz_decimals = _get_sz_decimals(coin)

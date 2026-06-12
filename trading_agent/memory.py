@@ -112,7 +112,6 @@ def _increment_used(ids_to_inc, lessons=None):
 
 # 教训中文字符集缓存，避免每次搜索都重复运行正则
 _cjk_cache: dict[int, set] = {}
-_cjk_cache_max = 256
 
 
 def _get_lesson_cjk(lesson: dict) -> set:
@@ -123,8 +122,7 @@ def _get_lesson_cjk(lesson: dict) -> set:
     text = (lesson.get("lesson") or "").lower()
     cjk = set(re.findall(r'[一-鿿]', text))
     if lid is not None:
-        if len(_cjk_cache) < _cjk_cache_max:
-            _cjk_cache[lid] = cjk
+        _cjk_cache[lid] = cjk
     return cjk
 
 

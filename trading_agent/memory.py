@@ -65,7 +65,7 @@ def _load_lessons():
             except OSError:
                 print("  [记忆] 无法创建 lessons.json")
             _lessons_cache = []
-            return []
+            return _lessons_cache
         try:
             with open(_LESSONS_FILE, encoding="utf-8") as f:
                 data = json.load(f)
@@ -89,7 +89,7 @@ def _load_lessons():
             print("  [记忆] 无法重建 lessons.json")
         _lessons_cache = []
         _cjk_cache.clear()
-        return []
+        return _lessons_cache
 
 
 def _cosine_similarity(a, b):

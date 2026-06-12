@@ -216,7 +216,7 @@ def recall(context_text: str, top_k: int = 3):
     返回：最相关的教训列表，每条包含 lesson, tags, outcome
     """
     if not isinstance(context_text, str):
-        context_text = str(context_text)
+        context_text = str(context_text) or ""
     else:
         context_text = context_text or ""
     top_k = max(1, min(int(top_k), 20))

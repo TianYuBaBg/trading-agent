@@ -183,8 +183,8 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None, _wallet_mod
         if close_size is not None:
             try:
                 close_size = abs(float(close_size))
-                if close_size <= 0:
-                    return {"error": "平仓失败：size 必须为正数"}
+                if close_size == 0:
+                    close_size = None  # 0 等价于全平，统一用 None 处理
             except (TypeError, ValueError):
                 return {"error": f"平仓失败：size 参数格式无效（{args.get('size')}）"}
         result = hl_connector.close_trade(coin, size=close_size, _positions=_positions)
@@ -309,27 +309,27 @@ def run_trade_cycle():
         print(f"  [Agent] 获取行情失败，跳过交易周期（{overview}）")
         return {"error": f"获取行情失败：{overview}", "reply": f"获取行情失败：{overview}", "state": "", "tool_results": [], "thought": "", "need_review": False, "lesson_to_save": ""}
     # 风控检查：DAILY_LOSS_LIMIT_PCT < 0 表示启用风控（-5 表示日亏 5% 停止）
+    # 执行至此 wallet_value > 0（第 290 行已对 <= 0 提前返回）
     if config.DAILY_LOSS_LIMIT_PCT < 0:
         wallet_value = balance.get("wallet_value") or 0
-        if wallet_value > 0:
-            recent_trades = hl_connector.get_trade_history(days=1)
-            if not isinstance(recent_trades, list):
-                print(f"  [风控] 获取今日成交记录失败（{str(recent_trades)[:80]}），跳过风控检查")
-            elif recent_trades:
-                today_pnl = sum(t.get("pnl") or 0 for t in recent_trades)
-                loss_limit = wallet_value * abs(config.DAILY_LOSS_LIMIT_PCT) / 100
-                if today_pnl < -loss_limit:
-                    msg = f"今日亏损 ${today_pnl:.2f} 超过限制 ${-loss_limit:.2f}（{config.DAILY_LOSS_LIMIT_PCT}%），停止交易"
-                    print(f"  [风控] {msg}")
-                    return {
-                        "error": msg,
-                        "thought": msg,
-                        "reply": msg,
-                        "need_review": False,  # 避免 auto 模式每周期重复调 DeepSeek
-                        "tool_results": [],
-                        "state": f"余额：{json.dumps(balance, ensure_ascii=False)}\n今日盈亏：{today_pnl:.2f}",
-                        "lesson_to_save": "",
-                    }
+        recent_trades = hl_connector.get_trade_history(days=1)
+        if not isinstance(recent_trades, list):
+            print(f"  [风控] 获取今日成交记录失败（{str(recent_trades)[:80]}），跳过风控检查")
+        elif recent_trades:
+            today_pnl = sum(t.get("pnl") or 0 for t in recent_trades)
+            loss_limit = wallet_value * abs(config.DAILY_LOSS_LIMIT_PCT) / 100
+            if today_pnl < -loss_limit:
+                msg = f"今日亏损 ${today_pnl:.2f} 超过限制 ${-loss_limit:.2f}（{config.DAILY_LOSS_LIMIT_PCT}%），停止交易"
+                print(f"  [风控] {msg}")
+                return {
+                    "error": msg,
+                    "thought": msg,
+                    "reply": msg,
+                    "need_review": False,
+                    "tool_results": [],
+                    "state": f"余额：{json.dumps(balance, ensure_ascii=False)}\n今日盈亏：{today_pnl:.2f}",
+                    "lesson_to_save": "",
+                }
 
     wallet_mode = hl_connector.get_wallet_mode() or "未配置"
     state_text = f"""钱包模式：{wallet_mode}

@@ -18,12 +18,16 @@ import re
 import shutil
 import datetime
 import heapq
+import threading
 import numpy as np
 
 _LESSONS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "lessons.json")
 
 # 内存缓存，避免同一个 cycle 内重复读文件
 _lessons_cache = None
+
+# 线程锁，防止 auto 模式下主线程和输入线程同时写文件
+_io_lock = threading.Lock()
 
 # ---------- 向量模型 ----------
 _embedding_model = None
@@ -90,12 +94,13 @@ def _increment_used(ids_to_inc, lessons=None):
         return
     if lessons is None:
         lessons = _load_lessons()
-    for l in lessons:
-        lid = l.get("id")
-        if lid is not None and lid in ids_to_inc:
-            l["used_count"] = (l.get("used_count") or 0) + 1
-    with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
-        json.dump(lessons, f, ensure_ascii=False, indent=2)
+    with _io_lock:
+        for l in lessons:
+            lid = l.get("id")
+            if lid is not None and lid in ids_to_inc:
+                l["used_count"] = (l.get("used_count") or 0) + 1
+        with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
+            json.dump(lessons, f, ensure_ascii=False, indent=2)
 
 
 def _keyword_score(lesson: dict, context_text: str, ctx_chinese: set) -> float:
@@ -169,9 +174,10 @@ def add_lesson(lesson_text: str, tags: list[str] = None, outcome: str = ""):
         "embedding": embedding,
         "used_count": 0,
     }
-    lessons.append(lesson)
-    with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
-        json.dump(lessons, f, ensure_ascii=False, indent=2)
+    with _io_lock:
+        lessons.append(lesson)
+        with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
+            json.dump(lessons, f, ensure_ascii=False, indent=2)
 
     print(f"  [记忆] 保存教训 #{lesson['id']}: {lesson_text[:50]}...")
     return lesson

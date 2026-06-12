@@ -158,7 +158,7 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
                 return {"error": f"平仓失败：size 参数格式无效（{size_arg}）"}
         result = hl_connector.close_trade(coin, size=size_arg, _positions=_positions)
         if isinstance(result, dict) and result.get("status") == "已平仓":
-            if result.get("remaining_size", 0) == 0:  # 仅全平时标记为已执行，部分平保留重试
+            if not (result.get("remaining_size") or 0):  # 仅全平时标记为已执行，部分平保留重试
                 _executed_ops.add(key)
         return result
     elif name == "recall_lessons":

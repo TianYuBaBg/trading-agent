@@ -441,6 +441,8 @@ def run_trade_cycle():
             text = (lesson_to_save.get("text") or lesson_to_save.get("lesson") or "").strip()
             if text:
                 memory.add_lesson(text, lesson_to_save.get("tags"), lesson_to_save.get("outcome") or "")
+            else:
+                print(f"  [Agent] 教训保存跳过：AI 返回了 lesson_to_save 但 text 为空，raw={str(lesson_to_save)[:100]}")
         elif isinstance(lesson_to_save, str):
             memory.add_lesson(lesson_to_save)
 

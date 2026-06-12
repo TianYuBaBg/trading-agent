@@ -146,7 +146,7 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None, _wallet_mod
         coin = str(args.get("coin") or "").strip().upper()
         side = str(args.get("side") or "").strip().lower()
         size = args.get("size")
-        if not coin or not side or not size:
+        if not coin or not side or size is None:
             return {"error": "开仓失败：缺少必填参数 coin/side/size"}
         if side not in ("long", "short"):
             return {"error": f"开仓失败：side 必须为 long 或 short，收到: {side}"}

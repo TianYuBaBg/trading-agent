@@ -192,6 +192,8 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
 
 def _extract_json(text: str) -> dict:
     """从 AI 回复中提取 JSON 对象，解析失败时返回 error dict"""
+    if not text:
+        return {"error": "AI 返回空响应", "_raw": ""}
     clean = text.strip()
     if clean.startswith("```"):
         clean = clean.split("\n", 1)[-1]

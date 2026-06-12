@@ -232,8 +232,11 @@ def recall(context_text: str, top_k: int = 3):
                 scored = []
                 for l in lessons:
                     if l.get("embedding"):
-                        sim = _cosine_similarity(ctx_vec, l["embedding"])
-                        scored.append((sim, l))
+                        try:
+                            sim = _cosine_similarity(ctx_vec, l["embedding"])
+                            scored.append((sim, l))
+                        except Exception:
+                            continue  # 跳过损坏的 embedding，不影响其他教训
                 scored.sort(key=lambda x: -x[0])
                 top = scored[:top_k]
 

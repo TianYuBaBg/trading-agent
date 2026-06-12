@@ -269,21 +269,26 @@ def recall(context_text: str, top_k: int = 3):
                 ctx_vec = e
                 break
             if ctx_vec is not None:
-                # 算相似度，排序
+                # 算相似度，排序（记录 embedding 计算异常的教训 ID，后续兜底搜索仍可覆盖）
                 scored = []
+                failed_embed_ids = set()
                 for l in lessons:
                     if l.get("embedding"):
                         try:
                             sim = _cosine_similarity(ctx_vec, l["embedding"])
                             scored.append((sim, l))
                         except Exception:
-                            continue  # 跳过损坏的 embedding，不影响其他教训
+                            lid = l.get("id")
+                            if lid is not None:
+                                failed_embed_ids.add(lid)
+                            continue
                 top = heapq.nlargest(top_k, scored, key=lambda x: x[0])
 
-                # 向量结果不足 top_k 时，用关键词匹配补充无 embedding 的教训
+                # 向量结果不足 top_k 时，用关键词匹配补充（无 embedding + embedding 计算失败的教训）
                 if len(top) < top_k:
                     selected_ids = {l[1].get("id") for l in top}
-                    remaining = [l for l in lessons if l.get("id") not in selected_ids and not l.get("embedding")]
+                    remaining = [l for l in lessons if l.get("id") not in selected_ids
+                                 and (not l.get("embedding") or l.get("id") in failed_embed_ids)]
                     fallback = [(_keyword_score(l, ctx_lower, ctx_chinese, ctx_keywords), l) for l in remaining]
                     top.extend((0.0, l) for _, l in heapq.nlargest(top_k - len(top), fallback, key=lambda x: x[0]))
 

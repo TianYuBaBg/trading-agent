@@ -487,6 +487,11 @@ def run_trade_cycle():
                     balance = new_balance
                 if isinstance(new_positions, list):
                     positions = new_positions
+                # 同步更新 state_text，确保返回的 state 字段反映最新余额/持仓
+                state_text = f"""钱包模式：{wallet_mode}
+当前账户：{json.dumps(balance, ensure_ascii=False)}
+当前持仓：{json.dumps(positions, ensure_ascii=False)}
+市场概况：{json.dumps(overview[:20], ensure_ascii=False)}"""
             print(f"  [Agent] 结果: {str(result)[:80]}...")
             all_results.append({"tool": name, "result": result})
             # 分离错误与警告，避免去重提示干扰 AI 对真正失败的判断

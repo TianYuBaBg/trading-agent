@@ -414,7 +414,10 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
                     _need_leverage_update = False
                     break
         if _need_leverage_update:
-            ex.update_leverage(leverage, coin, is_buy)
+            lev_resp = ex.update_leverage(leverage, coin, is_buy)
+            lev_str = str(lev_resp)
+            if '"error"' in lev_str.lower() or '"status":"err"' in lev_str:
+                return f"开仓失败：设置杠杆失败（{lev_str[:200]}）"
 
         # 市价单（IOC = Immediate-or-Cancel，市价吃单）
         result = ex.market_open(coin, is_buy, coin_size, current_price, slippage=0.01)

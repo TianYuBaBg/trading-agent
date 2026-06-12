@@ -26,8 +26,6 @@ _CONFIG_PATH = os.path.join(os.path.dirname(__file__), "data", "config.json")
 def create_wallet():
     """生成新的 Hyperliquid 钱包"""
     from eth_account import Account
-    import json
-    import os
 
     # 检查是否已有钱包
     if os.path.exists(_CONFIG_PATH):
@@ -174,7 +172,23 @@ def manual_mode():
                 continue
 
             if cmd in ["转入资金", "转入"]:
-                result = hl_connector.transfer_spot_to_perp(5.8)
+                try:
+                    amt_input = input("转入金额（直接回车 = 全部转入）: ").strip()
+                    if amt_input:
+                        amount = float(amt_input)
+                    else:
+                        amount = 0  # 下面用正数判断替代
+                except (ValueError, TypeError):
+                    print("金额格式无效")
+                    continue
+                if amount <= 0:
+                    bal = hl_connector.get_balance()
+                    spot = bal.get("spot_value") if isinstance(bal, dict) else 0
+                    if spot <= 0:
+                        print("Spot 账户无可用 USDC")
+                        continue
+                    amount = spot
+                result = hl_connector.transfer_spot_to_perp(amount)
                 print(f"转入结果: {result}")
                 continue
 

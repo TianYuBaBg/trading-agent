@@ -45,6 +45,7 @@ _TOOL_DESCRIPTIONS = {
     "close_trade": "平仓，参数：coin（币种），size（平仓数量，可选，不传则全平）",
     "recall_lessons": "回想过去类似情况学到的教训，参数：context（当前市场情况描述），top_k（返回几条，默认3）",
     "add_lesson": "记录一条新教训，参数：lesson（教训内容），tags（标签列表），outcome（结果）",
+    "transfer_spot_to_perp": "把 USDC 从 Spot 转到永续合约账户（仅直连私钥模式有效），参数：amount（金额）",
 }
 
 

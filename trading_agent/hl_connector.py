@@ -75,6 +75,7 @@ _info = None
 _exchange = None
 _wallet_address = None
 _sz_decimals_cache = {}
+_sz_decimals_loaded = False
 _user_state_cache = None
 
 
@@ -338,16 +339,17 @@ def _get_fill_price(statuses: list, fallback: float) -> float:
 
 def _get_sz_decimals(coin: str) -> int:
     """获取币种的数量精度（szDecimals），结果缓存（一次 meta() 缓存所有币种）"""
-    global _sz_decimals_cache
+    global _sz_decimals_cache, _sz_decimals_loaded
     if coin in _sz_decimals_cache:
         return _sz_decimals_cache[coin]
-    # 缓存非空说明 meta() 已调过，表中没有的币直接给默认值，无需重复 RPC
-    if _sz_decimals_cache:
+    # 缓存已加载（meta() 曾成功过），表中没有的币直接给默认值，无需重复 RPC
+    if _sz_decimals_loaded:
         _sz_decimals_cache[coin] = 4
         return 4
     info = _ensure_info()
     try:
         meta = info.meta()
+        _sz_decimals_loaded = True
         # 一次遍历缓存所有币种的 szDecimals，避免每个新币种都调一次 meta()
         for asset in (meta.get("universe") or []):
             name = asset.get("name")
@@ -358,7 +360,7 @@ def _get_sz_decimals(coin: str) -> int:
         _sz_decimals_cache[coin] = result  # 未找到的 coin 也缓存默认值，避免重复 meta()
         return result
     except Exception:
-        _sz_decimals_cache[coin] = 4  # 异常时也缓存默认值，避免重复请求 meta()
+        _sz_decimals_cache[coin] = 4  # 异常时缓存当前币默认值，但允许下一周期重试 meta()
         return 4
 
 

@@ -113,8 +113,11 @@ def _increment_used(ids_to_inc, lessons=None):
                 l["used_count"] = (l.get("used_count") or 0) + 1
                 modified = True
         if modified:
-            with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
-                json.dump(lessons, f, ensure_ascii=False, indent=2)
+            try:
+                with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
+                    json.dump(lessons, f, ensure_ascii=False, indent=2)
+            except OSError:
+                print("  [记忆] 更新 used_count 写入失败")
 
 
 # 教训中文字符集缓存，避免每次搜索都重复运行正则

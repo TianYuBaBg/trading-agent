@@ -45,14 +45,12 @@ def _load_wallet():
     if _wallet_cache is not None:
         return _wallet_cache
     if not os.path.exists(config.CONFIG_PATH):
-        _wallet_cache = (None, None, None)
-        return _wallet_cache
+        return (None, None, None)
     try:
         with open(config.CONFIG_PATH, encoding="utf-8") as f:
             cfg = json.load(f)
     except (json.JSONDecodeError, OSError):
-        _wallet_cache = (None, None, None)
-        return _wallet_cache
+        return (None, None, None)
 
     # 优先使用 API 钱包模式
     main_addr = cfg.get("main_address") or ""
@@ -67,8 +65,8 @@ def _load_wallet():
         _wallet_cache = (pk, pk, "direct")
         return _wallet_cache
 
-    _wallet_cache = (None, None, None)
-    return _wallet_cache
+    # 文件存在但无有效凭证 — 不缓存，下次周期重新尝试
+    return (None, None, None)
 
 
 # ========== 初始化连接 ==========

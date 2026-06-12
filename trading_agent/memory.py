@@ -81,6 +81,7 @@ def _load_lessons():
         with open(_LESSONS_FILE, "w", encoding="utf-8") as f:
             json.dump([], f, ensure_ascii=False, indent=2)
         _lessons_cache = []
+        _cjk_cache.clear()
         return []
 
 

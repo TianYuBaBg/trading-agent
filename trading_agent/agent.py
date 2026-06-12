@@ -184,7 +184,7 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None, _wallet_mod
         except (TypeError, ValueError):
             return {"error": f"开仓失败：size 参数格式无效（{size}）"}
         try:
-            leverage_val = int(args.get("leverage") or 1)
+            leverage_val = int(float(args.get("leverage") or 1))
         except (TypeError, ValueError):
             return {"error": f"开仓失败：leverage 参数格式无效（{args.get('leverage')}）"}
         result = hl_connector.open_trade(coin, side, size_val, leverage_val, _balance=_balance, _positions=_positions)
@@ -235,7 +235,7 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None, _wallet_mod
         lesson_clean = {k: v for k, v in result.items() if k != "embedding"} if isinstance(result, dict) else result
         return {"status": "已保存", "lesson": lesson_clean}
     elif name == "transfer_spot_to_perp":
-        if (_wallet_mode or hl_connector.get_wallet_mode()) == "api":
+        if hl_connector.get_wallet_mode() == "api":
             return {"error": "转账失败：API 钱包模式不支持转账到永续合约，如需此功能请使用直连私钥模式"}
         if "transfer_spot_to_perp" in _executed_ops:
             return {"warning": "已在当前周期执行过转账，操作已跳过"}

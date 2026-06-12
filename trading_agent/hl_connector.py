@@ -512,7 +512,6 @@ def close_trade(coin: str, size=None, _positions=None):
     返回：平仓结果
     """
     ex = _ensure_exchange()
-    info = _ensure_info()
     try:
         coin = coin.upper()
         # 获取当前仓位（优先使用调用方传入的数据，避免重复 RPC）
@@ -531,6 +530,7 @@ def close_trade(coin: str, size=None, _positions=None):
         if not pos:
             return f"没有 {coin} 的持仓"
 
+        info = _ensure_info()
         mids = info.all_mids()
         current_price = float(mids.get(coin) or 0)
         if current_price == 0:

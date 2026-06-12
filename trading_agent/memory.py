@@ -20,6 +20,7 @@ import datetime
 import heapq
 import threading
 import numpy as np
+from trading_agent import config
 
 _LESSONS_FILE = os.path.join(config._DATA_DIR, "lessons.json")
 

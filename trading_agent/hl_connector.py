@@ -411,7 +411,7 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
         if isinstance(_positions, list):
             for _p in _positions:
                 if (_p.get("coin") == coin and _p.get("direction") == side
-                        and abs(float(_p.get("leverage", 0)) - leverage) < 0.01):
+                        and abs(float(_p.get("leverage") or 0) - leverage) < 0.01):
                     _need_leverage_update = False
                     break
         if _need_leverage_update:
@@ -640,7 +640,7 @@ def get_trade_history(days: int = 7):
                 "price": price,
                 "size": size,
                 "pnl": float(f.get("closedPnl") or 0),
-                "dir": f.get("dir", ""),
+                "dir": f.get("dir") or "",
                 "time": time.strftime("%m-%d %H:%M", time.localtime(fill_time / 1000)),
             })
         return recent

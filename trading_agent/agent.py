@@ -355,8 +355,8 @@ def run_trade_cycle():
         for tc in tool_calls:
             if not isinstance(tc, dict):
                 continue
-            name = tc.get("name", "")
-            args = tc.get("args", {})
+            name = tc.get("name") or ""
+            args = tc.get("args") or {}
             print(f"  [Agent] 调工具: {name}({args})")
             try:
                 result = _run_tool(name, args, _balance=balance, _positions=positions)

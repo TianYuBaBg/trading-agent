@@ -21,7 +21,7 @@ if not DEEPSEEK_API_KEY:
         try:
             with open(_cfg_path, encoding="utf-8") as _f:
                 _cfg = json.load(_f)
-            DEEPSEEK_API_KEY = _cfg.get("deepseek_api_key", "")
+            DEEPSEEK_API_KEY = _cfg.get("deepseek_api_key") or ""
         except Exception as _e:
             print(f"  [配置] 读取 data/config.json 失败: {_e}")
 if not DEEPSEEK_API_KEY:

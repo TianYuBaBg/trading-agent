@@ -27,7 +27,7 @@ _LESSONS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data",
 _lessons_cache = None
 
 # 线程锁，防止 auto 模式下主线程和输入线程同时写文件
-_io_lock = threading.Lock()
+_io_lock = threading.RLock()
 
 # ---------- 向量模型 ----------
 _embedding_model = None

@@ -470,7 +470,7 @@ def run_trade_cycle():
             # 交易或转账成功后刷新 balance/positions，避免后续仓位检查用旧数据
             need_refresh = False
             if isinstance(result, dict):
-                if result.get("status") in ("已开仓", "已平仓"):
+                if result.get("status") in ("已开仓", "已平仓", "部分平仓"):
                     need_refresh = True
                 elif name == "transfer_spot_to_perp" and result.get("status") == "ok":
                     need_refresh = True

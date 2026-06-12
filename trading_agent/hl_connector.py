@@ -591,7 +591,7 @@ def close_trade(coin: str, size=None, _positions=None):
 
         # 返回剩余数量，方便调用方判断是否为全平（remaining=0 表示已全部平完）
         return {
-            "status": "已平仓",
+            "status": "已平仓" if remaining == 0 else "部分平仓",
             "coin": coin,
             "exit_price": current_price,
             "pnl": round(pnl, 2),

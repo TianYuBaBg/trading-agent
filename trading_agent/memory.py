@@ -123,18 +123,18 @@ def _increment_used(ids_to_inc, lessons=None):
 
 
 # 教训中文字符集缓存，避免每次搜索都重复运行正则
-_cjk_cache: dict[int, set[str]] = {}
+_cjk_cache: dict[int | str, set[str]] = {}
 
 
 def _get_lesson_cjk(lesson: dict) -> set[str]:
-    """提取教训的中文字符集（带缓存）"""
+    """提取教训的中文字符集（带缓存，id 为空时用对象 id 做 fallback key）"""
     lid = lesson.get("id")
-    if lid is not None and lid in _cjk_cache:
-        return _cjk_cache[lid]
+    key = lid if lid is not None else id(lesson)
+    if key in _cjk_cache:
+        return _cjk_cache[key]
     text = (lesson.get("lesson") or "").lower()
     cjk = set(re.findall(r'[一-鿿]', text))
-    if lid is not None:
-        _cjk_cache[lid] = cjk
+    _cjk_cache[key] = cjk
     return cjk
 
 

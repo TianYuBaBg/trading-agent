@@ -2,8 +2,10 @@
 配置管理
 
 使用方式：
-1. 复制 config.example.json 为 data/config.json
-2. 填入你的钱包私钥和 DeepSeek API key
+1. 设置环境变量 DEEPSEEK_API_KEY，或创建 data/config.json 填入 api key
+2. 钱包配置创建在 trading_agent/data/config.json（API 钱包或直连私钥）
+   - API 钱包模式：{ "main_address": "0x...", "api_key": "0x..." }
+   - 直连模式：{ "wallet_private_key": "0x..." }
 
 也可通过环境变量配置：
   DEEPSEEK_API_KEY 覆盖 API key

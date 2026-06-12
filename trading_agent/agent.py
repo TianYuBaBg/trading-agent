@@ -440,12 +440,8 @@ def run_trade_cycle():
         final_thought = decision.get("thought") or ""
         final_reply = decision.get("reply") or ""
         # 重置每轮变量，避免前一轮的教训/复盘标记在后续轮次被误用
-        need_review = False
-        lesson_to_save = ""
-        if "need_review" in decision:
-            need_review = decision["need_review"] or False
-        if "lesson_to_save" in decision:
-            lesson_to_save = decision["lesson_to_save"] or ""
+        need_review = bool(decision.get("need_review") or False)
+        lesson_to_save = decision.get("lesson_to_save") or ""
 
         tool_calls = decision.get("tool_calls") or []
         if not isinstance(tool_calls, list):

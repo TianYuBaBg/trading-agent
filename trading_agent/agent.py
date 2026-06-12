@@ -199,8 +199,11 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None, _wallet_mod
         lesson = args.get("lesson")
         if not lesson or not isinstance(lesson, str):
             return {"error": "记录教训失败：缺少必填参数 lesson 或类型错误（需要字符串）"}
+        tags = args.get("tags")
+        if tags is not None and not isinstance(tags, (list, str)):
+            return {"error": "记录教训失败：tags 参数类型错误（需要列表或逗号分隔字符串）"}
         # tags 交给 memory.add_lesson 统一规范化（str→list / 去空格 / 小写 / 去重）
-        result = memory.add_lesson(lesson, args.get("tags"), args.get("outcome") or "")
+        result = memory.add_lesson(lesson, tags, args.get("outcome") or "")
         if result is None:
             return {"warning": "教训未保存：内容过短（少于5字符）"}
         if isinstance(result, dict) and result.get("_duplicate"):

@@ -241,12 +241,12 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
         return {"status": "已保存", "lesson": lesson_clean}
     elif name == "transfer_spot_to_perp":
         if hl_connector.get_wallet_mode() == "api":
-            # 自动保存教训到记忆系统，AI 会在后续周期 recall 到此信息，避免重复尝试
+            # 保存教训：API 模式无需转账，账户总资金（含 Spot）都可直接作为永续保证金使用
             memory.add_lesson(
-                "API 钱包模式无法将 Spot USDC 转入永续合约账户交易，如需增加 Perp 保证金需回网页端操作或改用直连私钥模式",
-                ["api", "转账", "perp"],
+                "API 钱包模式下转账功能不可用但无需处理，账户总资金（含 Spot）都可直接用作永续保证金，查 available 余额即可开仓",
+                ["api", "perp"],
             )
-            return {"error": "转账失败：API 钱包模式不支持转账到永续合约，如需此功能请使用直连私钥模式"}
+            return {"error": "转账失败：API 钱包模式不支持转账，但无需转账，账户总资金（含 Spot）都可直接作为永续保证金"}
         if "transfer_spot_to_perp" in _executed_ops:
             return {"warning": "已在当前周期执行过转账，操作已跳过"}
         try:

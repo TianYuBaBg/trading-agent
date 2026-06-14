@@ -640,6 +640,152 @@ def close_trade(coin: str, size=None, _positions=None):
         return f"平仓失败：{e}"
 
 
+# ========== 止损/止盈触发订单 ==========
+
+def set_stop_loss(coin: str, stop_price: float, size: float = None, slippage: float = 0.03):
+    """
+    设置止损触发订单（价格触发后自动市价平仓）
+    coin: "BTC"
+    stop_price: 触发价格
+    size: 止损数量，None = 全仓
+    slippage: 触发后市价单的滑点容忍度（默认3%）
+    """
+    ex = _ensure_exchange()
+    coin = coin.upper()
+    try:
+        positions = get_positions()
+        if isinstance(positions, str):
+            return f"设置止损失败：获取持仓失败（{positions}）"
+        pos = next((p for p in positions if p["coin"] == coin), None)
+        if not pos:
+            return f"设置止损失败：没有 {coin} 的持仓"
+        sz_decimals = _get_sz_decimals(coin)
+        close_sz = round(abs(pos["size"]) if size is None else abs(float(size)), sz_decimals)
+        if close_sz <= 0:
+            return "设置止损失败：数量无效"
+        is_long = pos["direction"] == "long"
+        is_buy = not is_long  # 多头→卖，空头→买
+        mids = _get_mids()
+        current_price = float(mids.get(coin) or 0) or float(pos.get("entry_px") or 0)
+        # 市价触发：limit_px 为可接受的最差成交价（宽滑点确保成交）
+        limit_px = stop_price * (1 - slippage) if is_long else stop_price * (1 + slippage)
+        order_type = {"trigger": {"triggerPx": stop_price, "isMarket": True, "tpsl": "sl"}}
+        result = ex.order(coin, is_buy, close_sz, limit_px, order_type, reduce_only=True)
+        if not result:
+            return "设置止损失败：订单返回空结果"
+        resp_str = json.dumps(result) if isinstance(result, (dict, list)) else str(result)
+        if '"error"' in resp_str.lower() or '"status": "err"' in resp_str.lower():
+            return f"设置止损失败：{resp_str[:200]}"
+        return {
+            "status": "止损已设置",
+            "coin": coin,
+            "stop_price": stop_price,
+            "size": close_sz,
+            "raw": resp_str[:200],
+        }
+    except Exception as e:
+        return f"设置止损失败：{e}"
+
+
+def set_take_profit(coin: str, target_price: float, size: float = None, slippage: float = 0.01):
+    """
+    设置止盈触发订单（价格达到目标后自动市价平仓）
+    coin: "BTC"
+    target_price: 目标价格
+    size: 止盈数量，None = 全仓
+    slippage: 触发后市价单的滑点容忍度（默认1%）
+    """
+    ex = _ensure_exchange()
+    coin = coin.upper()
+    try:
+        positions = get_positions()
+        if isinstance(positions, str):
+            return f"设置止盈失败：获取持仓失败（{positions}）"
+        pos = next((p for p in positions if p["coin"] == coin), None)
+        if not pos:
+            return f"设置止盈失败：没有 {coin} 的持仓"
+        sz_decimals = _get_sz_decimals(coin)
+        close_sz = round(abs(pos["size"]) if size is None else abs(float(size)), sz_decimals)
+        if close_sz <= 0:
+            return "设置止盈失败：数量无效"
+        is_long = pos["direction"] == "long"
+        is_buy = not is_long
+        limit_px = target_price * (1 + slippage) if is_long else target_price * (1 - slippage)
+        order_type = {"trigger": {"triggerPx": target_price, "isMarket": True, "tpsl": "tp"}}
+        result = ex.order(coin, is_buy, close_sz, limit_px, order_type, reduce_only=True)
+        if not result:
+            return "设置止盈失败：订单返回空结果"
+        resp_str = json.dumps(result) if isinstance(result, (dict, list)) else str(result)
+        if '"error"' in resp_str.lower() or '"status": "err"' in resp_str.lower():
+            return f"设置止盈失败：{resp_str[:200]}"
+        return {
+            "status": "止盈已设置",
+            "coin": coin,
+            "target_price": target_price,
+            "size": close_sz,
+            "raw": resp_str[:200],
+        }
+    except Exception as e:
+        return f"设置止盈失败：{e}"
+
+
+def get_open_orders(coin: str = None):
+    """
+    获取当前挂单（含止损止盈触发订单）
+    coin: 可选币种过滤
+    返回：挂单列表
+    """
+    info = _ensure_info()
+    addr = _ensure_wallet_address()
+    try:
+        orders = info.frontend_open_orders(addr)
+        if not isinstance(orders, list):
+            return []
+        result = []
+        for o in orders:
+            coin_name = o.get("coin", "")
+            if coin and coin_name.upper() != coin.upper():
+                continue
+            entry = {"coin": coin_name, "oid": o.get("oid")}
+            side = o.get("side")
+            entry["side"] = "buy" if side == "B" else "sell" if side == "S" else str(side)
+            try:
+                entry["limit_px"] = float(o.get("limitPx", 0))
+            except (TypeError, ValueError):
+                entry["limit_px"] = 0
+            tp = o.get("triggerPx")
+            if tp is not None:
+                try:
+                    entry["trigger_px"] = float(tp)
+                except (TypeError, ValueError):
+                    entry["trigger_px"] = None
+            else:
+                entry["trigger_px"] = None
+            entry["tpsl"] = o.get("tpsl")  # "sl"=止损, "tp"=止盈, None=普通限价
+            try:
+                entry["size"] = float(o.get("sz", 0))
+            except (TypeError, ValueError):
+                entry["size"] = 0
+            entry["reduce_only"] = bool(o.get("reduceOnly", False))
+            result.append(entry)
+        return result
+    except Exception as e:
+        return f"获取挂单失败：{e}"
+
+
+def cancel_order(coin: str, oid: int):
+    """取消一个挂单"""
+    ex = _ensure_exchange()
+    try:
+        result = ex.cancel(coin.upper(), int(oid))
+        resp_str = json.dumps(result) if isinstance(result, (dict, list)) else str(result)
+        if '"error"' in resp_str.lower() or '"status": "err"' in resp_str.lower():
+            return f"撤单失败：{resp_str[:200]}"
+        return {"status": "已撤单", "coin": coin.upper(), "oid": int(oid)}
+    except Exception as e:
+        return f"撤单失败：{e}"
+
+
 # ========== 交易记录 ==========
 
 _TRADES_FILE = os.path.join(config.DATA_DIR, "trades.json")

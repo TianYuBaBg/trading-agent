@@ -45,6 +45,10 @@ _TOOL_DESCRIPTIONS = {
     "recall_lessons": "回想过去类似情况学到的教训，参数：context（当前市场情况描述），top_k（返回几条，默认3）",
     "add_lesson": "记录一条新教训，参数：lesson（教训内容），tags（标签列表），outcome（结果）",
     "transfer_spot_to_perp": "把 USDC 从 Spot 转到永续合约账户（仅直连私钥模式有效），参数：amount（金额，0=全部转入）",
+    "set_stop_loss": "设置止损触发单（价格触发后自动市价平仓），参数：coin（币种），stop_price（触发价格），size（数量，可选，默认全仓）。开仓后务必立即设置止损来保护仓位",
+    "set_take_profit": "设置止盈触发单（价格到达目标后自动市价平仓），参数：coin（币种），target_price（目标价格），size（数量，可选，默认全仓）",
+    "get_open_orders": "查看当前所有挂单（含已设置的止损止盈单），参数：coin（可选，指定币种）",
+    "cancel_order": "取消挂单，参数：coin（币种），oid（订单ID）",
 }
 
 
@@ -60,10 +64,11 @@ def _build_system_prompt():
 4. 每次开仓前先回想相关教训
 5. 平仓后复盘并记录教训
 6. 开仓前计算可开金额：wallet_value * {config.MAX_POSITION_SIZE_PCT}% - 已有持仓名义价值（持仓数量 x 价格），选择在此范围内的金额。注意杠杆不影响名义价值，只影响保证金占用。开仓需要账户有足够可用资金（available = wallet_value - 已用保证金），账户总资金（含 Spot）都可作为保证金
-7. **核心目标：盈利。积极寻找交易机会，小仓位试单、发现趋势加仓**
+7. **核心目标：盈利。积极寻找交易机会，小仓位试单、发现趋势加仓。开仓后立即用 set_stop_loss 设置止损保护仓位，利润达标后用 set_take_profit 锁定利润**
 8. 小账户可用高杠杆（3x）提高资金利用率，每笔赚 2-5% 就很好
 9. 不要只会等待，没有明确风险信号就该尝试入场
 10. **同时关注非加密永续合约**：SPX（标普500指数永续）和 PAXG（黄金代币）是 Hyperliquid 上的非加密资产，定期查看其K线趋势和订单簿深度，与传统 crypto 品种对照分析，发现趋势机会时同样可以交易
+	11. **关注资金费率**：市场概况中的 funding 字段为资金费率（正=多头付空头=偏多信号，负=空头付多头=偏空信号），高正费率可能预示过热回调，高负费率可能预示反弹机会
 
 ## 可用工具
 {json.dumps(_TOOL_DESCRIPTIONS, ensure_ascii=False, indent=2)}
@@ -84,7 +89,8 @@ def _build_system_prompt():
 1. 第一轮：分析当前状态，如果数据不够就调工具获取更多信息
 2. 工具结果会返回给你，根据新数据做最终决策
 3. tool_calls 为空数组 = 最终决策完成（不交易或已执行）
-4. 如果发现交易机会，果断用 open_trade 开仓；如果持仓方向错了，close_trade 平仓"""
+4. 如果发现交易机会，果断用 open_trade 开仓；如果持仓方向错了，close_trade 平仓
+	5. **开仓后务必立即用 set_stop_loss 设置止损**，利润达标时用 set_take_profit 止盈"""
 
 
 # ========== 防重复执行 ==========
@@ -92,7 +98,7 @@ def _build_system_prompt():
 _executed_ops: set[str] = set()
 
 # 工具结果排序优先级：交易操作优先，避免截断丢失关键信息
-_KEY_OPS = {"open_trade", "close_trade", "transfer_spot_to_perp"}
+_KEY_OPS = {"open_trade", "close_trade", "set_stop_loss", "set_take_profit", "transfer_spot_to_perp"}
 
 
 def _reset_executed_ops():
@@ -261,6 +267,61 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
         if isinstance(result, dict) and result.get("status") == "ok":
             _executed_ops.add("transfer_spot_to_perp")
         return result
+    elif name == "set_stop_loss":
+        coin = str(args.get("coin") or "").strip().upper()
+        if not coin:
+            return {"error": "设置止损失败：缺少必填参数 coin"}
+        stop_price = args.get("stop_price")
+        if stop_price is None:
+            return {"error": "设置止损失败：缺少必填参数 stop_price"}
+        try:
+            stop_price = float(stop_price)
+        except (TypeError, ValueError):
+            return {"error": f"设置止损失败：stop_price 参数无效（{stop_price}）"}
+        if stop_price <= 0:
+            return {"error": f"设置止损失败：stop_price 必须大于 0（{stop_price}）"}
+        size = args.get("size")
+        if size is not None:
+            try:
+                size = abs(float(size))
+            except (TypeError, ValueError):
+                return {"error": f"设置止损失败：size 参数无效（{size}）"}
+        return hl_connector.set_stop_loss(coin, stop_price, size)
+    elif name == "set_take_profit":
+        coin = str(args.get("coin") or "").strip().upper()
+        if not coin:
+            return {"error": "设置止盈失败：缺少必填参数 coin"}
+        target_price = args.get("target_price")
+        if target_price is None:
+            return {"error": "设置止盈失败：缺少必填参数 target_price"}
+        try:
+            target_price = float(target_price)
+        except (TypeError, ValueError):
+            return {"error": f"设置止盈失败：target_price 参数无效（{target_price}）"}
+        if target_price <= 0:
+            return {"error": f"设置止盈失败：target_price 必须大于 0（{target_price}）"}
+        size = args.get("size")
+        if size is not None:
+            try:
+                size = abs(float(size))
+            except (TypeError, ValueError):
+                return {"error": f"设置止盈失败：size 参数无效（{size}）"}
+        return hl_connector.set_take_profit(coin, target_price, size)
+    elif name == "get_open_orders":
+        coin = str(args.get("coin") or "").strip().upper() or None
+        return hl_connector.get_open_orders(coin)
+    elif name == "cancel_order":
+        coin = str(args.get("coin") or "").strip().upper()
+        if not coin:
+            return {"error": "撤单失败：缺少必填参数 coin"}
+        oid = args.get("oid")
+        if oid is None:
+            return {"error": "撤单失败：缺少必填参数 oid"}
+        try:
+            oid = int(float(oid))
+        except (TypeError, ValueError):
+            return {"error": f"撤单失败：oid 参数无效（{oid}）"}
+        return hl_connector.cancel_order(coin, oid)
     return {"error": f"未知工具: {name}"}
 
 
@@ -537,7 +598,7 @@ def run_trade_cycle():
             feedback += "\n⚠️ 以下工具调用失败，请仔细检查，不要假设操作已成功：\n" + "\n".join(had_errors) + "\n"
         if had_warnings:
             feedback += "\nℹ️ 以下操作已执行（被去重跳过），无需重复操作：\n" + "\n".join(had_warnings) + "\n"
-        feedback += "\n## 根据以上数据做最终决策。开仓用 open_trade，平仓用 close_trade，不交易则 tool_calls 留空。"
+        feedback += "\n## 根据以上数据做最终决策。开仓用 open_trade，平仓用 close_trade，不要忘记设置止损（set_stop_loss）保护仓位。不交易则 tool_calls 留空。"
         messages.append({"role": "user", "content": feedback})
 
     # ---- 第 4 步：保存教训 ----

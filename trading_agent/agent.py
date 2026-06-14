@@ -69,7 +69,7 @@ def _build_system_prompt():
 8. 小账户可用高杠杆（3x）提高资金利用率，每笔赚 2-5% 就很好
 9. 不要只会等待，没有明确风险信号就该尝试入场
 10. **同时关注非加密永续合约**：SPX（标普500指数永续）和 PAXG（黄金代币）是 Hyperliquid 上的非加密资产，定期查看其K线趋势和订单簿深度，与传统 crypto 品种对照分析，发现趋势机会时同样可以交易
-	11. **资金费率套利**：用 get_funding_rates 查看费率排行。正费率 = 多头付空头 → 做空可收资金费；负费率 = 空头付多头 → 做多可收资金费。极端费率（>0.05%）预示方向过热可能反转，是建仓良机。优先找成交量大的币种做费率套利
+	11. **资金费率套利（低风险优先）**：用 get_funding_rates 查看费率排行。正费率=做空收钱，负费率=做多收钱。极端费率（>0.05%）是高胜率信号。**即使已有持仓，也值得平掉低潜力仓位，换仓到高费率币种做套利**——资金费是持续流入，方向判断正确时双重收益
 
 ## 可用工具
 {json.dumps(_TOOL_DESCRIPTIONS, ensure_ascii=False, indent=2)}
@@ -463,7 +463,13 @@ def run_trade_cycle():
                     break
         # 后续只用 top 30，裁剪 overview 减少 JSON 序列化数据量
         overview = overview[:30]
+
+    # 资金费率数据（用于套利分析）
+    _funding_rates = hl_connector.get_funding_rates(8)
+    funding_text = json.dumps(_funding_rates, ensure_ascii=False) if isinstance(_funding_rates, list) else "无"
+
     state_text = _format_state(wallet_mode, balance, positions, overview, _extra_assets)
+    state_text += f"\n资金费率排行(套利机会)：{funding_text}"
 
     # ---- 构造自然语言召回上下文（向量搜索用，不用 JSON）----
     recall_context_parts = []
@@ -482,6 +488,9 @@ def run_trade_cycle():
         if _extra_assets:
             _ea_desc = "; ".join(f"{c} ${d.get('mid') or 0}" for c, d in _extra_assets.items())
             recall_context_parts.append(f"非加密: {_ea_desc}")
+    if isinstance(_funding_rates, list) and _funding_rates:
+        _fr_desc = "; ".join(f"{r['coin']} {r['funding']}%→{r['direction']}" for r in _funding_rates[:5])
+        recall_context_parts.append(f"资金费率: {_fr_desc}")
     recall_context = "，".join(recall_context_parts) or state_text
 
     # ---- 第 2 步：回想教训 ----
@@ -605,7 +614,7 @@ def run_trade_cycle():
             feedback += "\n⚠️ 以下工具调用失败，请仔细检查，不要假设操作已成功：\n" + "\n".join(had_errors) + "\n"
         if had_warnings:
             feedback += "\nℹ️ 以下操作已执行（被去重跳过），无需重复操作：\n" + "\n".join(had_warnings) + "\n"
-        feedback += "\n## 根据以上数据做最终决策。开仓用 open_trade，平仓用 close_trade，不要忘记设置止损（set_stop_loss）保护仓位。不交易则 tool_calls 留空。"
+        feedback += "\n## 根据以上数据做最终决策。开仓用 open_trade，平仓用 close_trade，不要忘记设置止损（set_stop_loss）保护仓位。注意资金费率套利机会，可平旧仓换新仓。不交易则 tool_calls 留空。"
         messages.append({"role": "user", "content": feedback})
 
     # ---- 第 4 步：保存教训 ----

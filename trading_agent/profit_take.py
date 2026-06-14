@@ -44,9 +44,9 @@ def _close_position(p, reason: str):
     print(f"[{reason}] {coin} PnL ${pnl:.2f} (名义 ${ntl:.0f})，直接平仓")
     result = hl_connector.close_trade(coin)
     if isinstance(result, dict) and result.get("status") == "已平仓":
-        print(f"[{reason}] ✓ {coin} 已平仓")
+        print(f"[{reason}] [OK] {coin} 已平仓")
     else:
-        print(f"[{reason}] ✗ {coin} 平仓失败: {result}")
+        print(f"[{reason}] [FAIL] {coin} 平仓失败: {result}")
 
 
 def main():

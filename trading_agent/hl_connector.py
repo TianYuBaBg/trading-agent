@@ -258,13 +258,13 @@ def get_funding_rates(top_n: int = 20):
             direction = "short" if funding > 0 else "long"
             funding_pct = round(funding * 100, 6)
             apy = round(funding * 24 * 365 * 100, 1)
-            hourly_per_1k = round(funding * 1000, 4)
+            earn_per_1k = round(abs(funding) * 1000, 4)
             rates.append({
                 "coin": coin,
                 "funding_pct": funding_pct,
                 "funding_apy": apy,
                 "direction": direction,
-                "hourly_per_1k": hourly_per_1k,
+                "earn_usd_per_1k_per_hour": earn_per_1k,
                 "price": price,
                 "volume": volume,
                 "open_interest": round(oi, 2),

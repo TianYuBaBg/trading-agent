@@ -49,6 +49,7 @@ _TOOL_DESCRIPTIONS = {
     "set_take_profit": "设置止盈触发单（价格到达目标后自动市价平仓），参数：coin（币种），target_price（目标价格），size（数量，可选，默认全仓）",
     "get_open_orders": "查看当前所有挂单（含已设置的止损止盈单），参数：coin（可选，指定币种）",
     "cancel_order": "取消挂单，参数：coin（币种），oid（订单ID）",
+    "get_funding_rates": "查看资金费率排行，发现套利机会（正费率=做空收资金费，负费率=做多收资金费）。参数：top_n（返回条数，默认20）",
 }
 
 
@@ -68,7 +69,7 @@ def _build_system_prompt():
 8. 小账户可用高杠杆（3x）提高资金利用率，每笔赚 2-5% 就很好
 9. 不要只会等待，没有明确风险信号就该尝试入场
 10. **同时关注非加密永续合约**：SPX（标普500指数永续）和 PAXG（黄金代币）是 Hyperliquid 上的非加密资产，定期查看其K线趋势和订单簿深度，与传统 crypto 品种对照分析，发现趋势机会时同样可以交易
-	11. **关注资金费率**：市场概况中的 funding 字段为资金费率（正=多头付空头=偏多信号，负=空头付多头=偏空信号），高正费率可能预示过热回调，高负费率可能预示反弹机会
+	11. **资金费率套利**：用 get_funding_rates 查看费率排行。正费率 = 多头付空头 → 做空可收资金费；负费率 = 空头付多头 → 做多可收资金费。极端费率（>0.05%）预示方向过热可能反转，是建仓良机。优先找成交量大的币种做费率套利
 
 ## 可用工具
 {json.dumps(_TOOL_DESCRIPTIONS, ensure_ascii=False, indent=2)}
@@ -322,6 +323,12 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
         except (TypeError, ValueError):
             return {"error": f"撤单失败：oid 参数无效（{oid}）"}
         return hl_connector.cancel_order(coin, oid)
+    elif name == "get_funding_rates":
+        try:
+            top_n = int(float(args.get("top_n") or 20))
+        except (TypeError, ValueError):
+            return {"error": f"get_funding_rates top_n 参数无效：'{args.get('top_n')}'"}
+        return hl_connector.get_funding_rates(top_n)
     return {"error": f"未知工具: {name}"}
 
 

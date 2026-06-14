@@ -212,6 +212,59 @@ def get_market_overview():
         return f"获取行情失败：{e}"
 
 
+def get_funding_rates(top_n: int = 20):
+    """
+    获取资金费率排行，用于发现套利机会
+    top_n: 返回前 N 条
+    返回：按 |funding| 降序排列的列表，标注方向建议
+    """
+    info = _ensure_info()
+    try:
+        meta_ctxs = info.meta_and_asset_ctxs()
+        universe = meta_ctxs[0].get("universe") or []
+        ctxs = meta_ctxs[1] if len(meta_ctxs) > 1 else []
+        mids = _get_mids()
+        coin_to_ctx = {}
+        for i, asset in enumerate(universe):
+            coin = asset.get("name")
+            if coin and i < len(ctxs):
+                coin_to_ctx[coin] = ctxs[i]
+        rates = []
+        for coin, mid in mids.items():
+            if coin.startswith("#") or coin.startswith("@"):
+                continue
+            ctx = coin_to_ctx.get(coin)
+            if not ctx:
+                continue
+            funding = ctx.get("funding")
+            if funding is None:
+                continue
+            try:
+                funding = float(funding)
+            except (TypeError, ValueError):
+                continue
+            try:
+                price = float(mid)
+            except (TypeError, ValueError):
+                continue
+            try:
+                oi = float(ctx.get("oi") or 0)
+            except (TypeError, ValueError):
+                oi = 0
+            direction = "short" if funding > 0 else "long"  # 正费率=做空收钱，负费率=做多收钱
+            rates.append({
+                "coin": coin,
+                "funding": round(funding * 100, 6),  # 转为百分比
+                "direction": direction,
+                "price": price,
+                "open_interest": round(oi, 2),
+            })
+        rates.sort(key=lambda x: abs(x["funding"]), reverse=True)
+        return rates[:max(1, min(int(top_n), 50))]
+    except Exception as e:
+        return f"获取资金费率失败：{e}"
+
+
 def get_orderbook(coin: str, depth: int = 5):
     """
     获取某个币的订单簿深度

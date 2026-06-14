@@ -41,8 +41,8 @@ DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.co
 DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
 
 # ========== 安全限制（防止 AI 乱来）==========
-# 单笔最大仓位：钱包总资金的百分比
-MAX_POSITION_SIZE_PCT = 80  # 80%（激进模式）
+# 单笔最大仓位：钱包总资金的百分比（费率套利用 200%，因止损 Tight 风险可控）
+MAX_POSITION_SIZE_PCT = 200  # 200%（费率套利模式）
 
 # 最大杠杆
 MAX_LEVERAGE = 3  # 最高 3 倍

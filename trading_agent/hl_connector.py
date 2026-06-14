@@ -251,18 +251,78 @@ def get_funding_rates(top_n: int = 20):
                 oi = float(ctx.get("oi") or 0)
             except (TypeError, ValueError):
                 oi = 0
-            direction = "short" if funding > 0 else "long"  # 正费率=做空收钱，负费率=做多收钱
+            try:
+                volume = float(ctx.get("dayNtlVlm") or 0)
+            except (TypeError, ValueError):
+                volume = 0
+            direction = "short" if funding > 0 else "long"
+            funding_pct = round(funding * 100, 6)
+            apy = round(funding * 24 * 365 * 100, 1)
+            hourly_per_1k = round(funding * 1000, 4)
             rates.append({
                 "coin": coin,
-                "funding": round(funding * 100, 6),  # 转为百分比
+                "funding_pct": funding_pct,
+                "funding_apy": apy,
                 "direction": direction,
+                "hourly_per_1k": hourly_per_1k,
                 "price": price,
+                "volume": volume,
                 "open_interest": round(oi, 2),
             })
-        rates.sort(key=lambda x: abs(x["funding"]), reverse=True)
+        rates.sort(key=lambda x: abs(x["funding_pct"]), reverse=True)
         return rates[:max(1, min(int(top_n), 50))]
     except Exception as e:
         return f"获取资金费率失败：{e}"
+
+
+def get_funding_history(coin: str, hours: int = 48):
+    """
+    获取资金费率历史趋势，判断费率是否稳定（持续高/低）还是短暂脉冲
+    coin: "BTC"
+    hours: 往回看多少小时（最多 720）
+    返回：[{"time": "06-14 12:00", "funding_pct": 0.001, "funding_apy": 8.76}, ...]
+    """
+    info = _ensure_info()
+    try:
+        coin = coin.upper()
+        hours = max(1, min(int(hours), 720))
+        now_ms = int(time.time() * 1000)
+        start_ms = now_ms - hours * 3600 * 1000
+        raw = info.funding_history(coin, start_ms, now_ms)
+        if not isinstance(raw, list) or not raw:
+            return {"error": f"{coin} 无资金费率历史数据"}
+        result = []
+        for entry in raw:
+            try:
+                rate = float(entry.get("fundingRate") or 0)
+            except (TypeError, ValueError):
+                continue
+            t = entry.get("time")
+            if t is None:
+                continue
+            result.append({
+                "time": time.strftime("%m-%d %H:%M", time.gmtime(int(t) / 1000)),
+                "funding_pct": round(rate * 100, 6),
+                "funding_apy": round(rate * 24 * 365 * 100, 1),
+            })
+        if not result:
+            return {"error": f"{coin} 资金费率历史解析失败"}
+        # 附加统计摘要
+        rates = [r["funding_pct"] for r in result]
+        avg = sum(rates) / len(rates)
+        result.append({
+            "time": "STATS",
+            "funding_pct": "---",
+            "funding_apy": "---",
+            "avg_pct": round(avg, 6),
+            "avg_apy": round(avg * 24 * 365, 1),
+            "min_pct": round(min(rates), 6),
+            "max_pct": round(max(rates), 6),
+            "count": len(rates),
+        })
+        return result
+    except Exception as e:
+        return f"获取资金费率历史失败：{e}"
 
 
 def get_orderbook(coin: str, depth: int = 5):

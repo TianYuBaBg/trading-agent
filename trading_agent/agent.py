@@ -49,7 +49,8 @@ _TOOL_DESCRIPTIONS = {
     "set_take_profit": "设置止盈触发单（价格到达目标后自动市价平仓），参数：coin（币种），target_price（目标价格），size（数量，可选，默认全仓）",
     "get_open_orders": "查看当前所有挂单（含已设置的止损止盈单），参数：coin（可选，指定币种）",
     "cancel_order": "取消挂单，参数：coin（币种），oid（订单ID）",
-    "get_funding_rates": "查看资金费率排行，发现套利机会（正费率=做空收资金费，负费率=做多收资金费）。参数：top_n（返回条数，默认20）",
+    "get_funding_rates": "查看资金费率排行（含年化APY、每千刀时收益），发现套利机会。正费率=做空收钱，负费率=做多收钱。参数：top_n（返回条数，默认20）",
+    "get_funding_history": "查看某个币的资金费率历史趋势，判断费率稳定性（持续高/低还是脉冲）。参数：coin（币种），hours（往回看几小时，默认48）",
 }
 
 
@@ -69,7 +70,7 @@ def _build_system_prompt():
 8. 小账户可用高杠杆（3x）提高资金利用率，每笔赚 2-5% 就很好
 9. 不要只会等待，没有明确风险信号就该尝试入场
 10. **同时关注非加密永续合约**：SPX（标普500指数永续）和 PAXG（黄金代币）是 Hyperliquid 上的非加密资产，定期查看其K线趋势和订单簿深度，与传统 crypto 品种对照分析，发现趋势机会时同样可以交易
-	11. **资金费率套利（低风险优先）**：用 get_funding_rates 查看费率排行。正费率=做空收钱，负费率=做多收钱。极端费率（>0.05%）是高胜率信号。**即使已有持仓，也值得平掉低潜力仓位，换仓到高费率币种做套利**——资金费是持续流入，方向判断正确时双重收益
+	11. **资金费率套利（低风险优先）**：用 get_funding_rates 查看费率排行。正费率=做空收钱，负费率=做多收钱。费率换算：funding_pct × 24 × 365 = APY。极端费率（funding_pct > 0.05% 即 APY > 438%）是高胜率信号。用 get_funding_history 看费率是否稳定——持续高费率比脉冲更可靠。**即使已有持仓，也值得平掉低潜力仓位换仓到高费率币种**——资金费是持续流入，方向判断正确时双重收益。优先选成交量大的币种（volume > 1000万U）避免流动性风险
 
 ## 可用工具
 {json.dumps(_TOOL_DESCRIPTIONS, ensure_ascii=False, indent=2)}
@@ -329,6 +330,15 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
         except (TypeError, ValueError):
             return {"error": f"get_funding_rates top_n 参数无效：'{args.get('top_n')}'"}
         return hl_connector.get_funding_rates(top_n)
+    elif name == "get_funding_history":
+        coin = str(args.get("coin") or "").strip().upper()
+        if not coin:
+            return {"error": "获取资金费率历史失败：缺少必填参数 coin"}
+        try:
+            hours = int(float(args.get("hours") or 48))
+        except (TypeError, ValueError):
+            return {"error": f"get_funding_history hours 参数无效：'{args.get('hours')}'"}
+        return hl_connector.get_funding_history(coin, hours)
     return {"error": f"未知工具: {name}"}
 
 
@@ -489,7 +499,7 @@ def run_trade_cycle():
             _ea_desc = "; ".join(f"{c} ${d.get('mid') or 0}" for c, d in _extra_assets.items())
             recall_context_parts.append(f"非加密: {_ea_desc}")
     if isinstance(_funding_rates, list) and _funding_rates:
-        _fr_desc = "; ".join(f"{r['coin']} {r['funding']}%→{r['direction']}" for r in _funding_rates[:5])
+        _fr_desc = "; ".join(f"{r['coin']} {r['funding_pct']}%/APY{r['funding_apy']}%→{r['direction']}" for r in _funding_rates[:5])
         recall_context_parts.append(f"资金费率: {_fr_desc}")
     recall_context = "，".join(recall_context_parts) or state_text
 

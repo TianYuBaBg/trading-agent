@@ -72,8 +72,9 @@ def _build_system_prompt():
 10. **同时关注非加密永续合约**：SPX（标普500指数永续）和 PAXG（黄金代币）是 Hyperliquid 上的非加密资产，定期查看其K线趋势和订单簿深度，与传统 crypto 品种对照分析，发现趋势机会时同样可以交易
 	11. **资金费率套利（低风险优先）**：用 get_funding_rates 查看费率排行。正费率=做空收钱，负费率=做多收钱。费率换算：funding_pct × 24 × 365 = APY。极端费率（funding_pct > 0.05% 即 APY > 438%）是高胜率信号。用 get_funding_history 看费率是否稳定——持续高费率比脉冲更可靠。**即使已有持仓，也值得平掉低潜力仓位换仓到高费率币种**——资金费是持续流入，方向判断正确时双重收益。优先选成交量大的币种（volume > 1000万U）避免流动性风险。
 		**硬约束：禁止逆费率方向开仓。** 费率为负时必须做多（不可做空），费率为正时必须做空（不可做多）。趋势分析和K线形态仅用于选择入场时机，不能用于推翻费率方向。如果当前持仓方向与费率方向相反，必须立即平仓纠正。
-	12. **持仓有小盈利就及时止盈（比例止盈 0.3%）**：资金费率套利的核心是赚取费率 + 小波段利润，不要贪婪。按仓位名义价值的 0.3% 止盈（名义价值=持仓数量×入场价，如 $100 名义仓位盈利 $0.30 即可止盈，最低 $0.30）。用 close_trade 平仓锁定利润。小盈利多次叠加比死扛等大收益更稳定。平仓后如果费率依然好，可以重新入场
+	12. **让利润奔跑，不设微利止盈**：费率套利的利润主要来自资金费率持续流入，不要赚 0.3% 就跑。用 set_take_profit 在合理目标价位挂止盈单（如支撑/阻力位、前高/前低），让仓位有空间走出趋势。平仓理由应该是费率回归正常、趋势反转或找到更好机会，而不是为了锁定微利
 	13. **分散风险**：当可用资金 > $100 时，开至少 2 个不同币种，单币名义价值不超过总资金的 300%。不要把所有资金压在一个币上，至少找 2 个有高费率机会的币同时持仓。如果当前只有一个币有仓位但市场还有别的机会，加仓新币而不是继续堆旧币
+	14. **远离被投票下架的币**：TON 正在进行下架投票（Validator vote to delist TON），不要开 TON 新仓位，已有 TON 仓位应立即平仓
 
 ## 可用工具
 {json.dumps(_TOOL_DESCRIPTIONS, ensure_ascii=False, indent=2)}
@@ -136,9 +137,9 @@ def _truncate_results(items: list, max_len: int = 8000) -> str:
 
 # ========== 执行工具调用 ==========
 
-def _run_tool(name: str, args: dict, _balance=None, _positions=None):
+def _run_tool(name: str, args: dict, _balance=None, _positions=None, _funding_rates=None):
     """执行一个工具调用并返回原始 Python 对象（非 JSON 字符串）
-    _balance/_positions: 调用方已查询的数据，用于避免重复 RPC"""
+    _balance/_positions/_funding_rates: 调用方已查询的数据，用于避免重复 RPC"""
 
     if not isinstance(args, dict):
         return {"error": f"工具 {name} 参数格式错误：需要 JSON 对象，收到 {type(args).__name__}"}
@@ -201,9 +202,42 @@ def _run_tool(name: str, args: dict, _balance=None, _positions=None):
                 return {"error": f"开仓失败：杠杆 {leverage_val}x 超出允许范围 [1, {config.MAX_LEVERAGE}]"}
         except (TypeError, ValueError):
             return {"error": f"开仓失败：leverage 参数格式无效（{args.get('leverage')}）"}
+        # 资金费率方向硬检查：禁止逆费率方向开仓
+        _dir_check = None
+        if isinstance(_funding_rates, list):
+            for fr in _funding_rates:
+                if fr.get("coin") == coin:
+                    _dir_check = fr
+                    break
+        if _dir_check is None:
+            _dir_check = hl_connector.get_funding_rate_for_coin(coin)
+        if isinstance(_dir_check, dict):
+            req_dir = _dir_check.get("direction")  # funding>0→"short", funding<0→"long"
+            if req_dir and req_dir != side:
+                return {"error": f"开仓失败：{coin} 资金费率 {_dir_check.get('funding_pct')}%，{req_dir == 'long' and '费率负(空付多)' or '费率正(多付空)'}，必须做{req_dir}，不可做{side}"}
         result = hl_connector.open_trade(coin, side, size_val, leverage_val, _balance=_balance, _positions=_positions)
         if isinstance(result, dict) and result.get("status") == "已开仓":
             _executed_ops.add(key)
+            # 自动设置默认止盈（±3%），防 AI 忘记设 TP
+            try:
+                entry_px = result.get("trade", {}).get("entry_price")
+                if not entry_px or not isinstance(entry_px, (int, float)) or entry_px <= 0:
+                    mids = hl_connector._get_mids()
+                    entry_px = float(mids.get(coin, 0)) if isinstance(mids, dict) else 0
+                if entry_px and isinstance(entry_px, (int, float)) and entry_px > 0:
+                    tp_target = entry_px * 0.97 if side == "short" else entry_px * 1.03
+                    print(f"  [Agent] 自动止盈: {coin} {side} 入场${entry_px:.4f} → TP${tp_target:.4f}")
+                    hl_connector.reset_user_state_cache()  # 刷新持仓缓存，否则 set_take_profit 读不到新仓位
+                    tp_result = hl_connector.set_take_profit(coin, tp_target)
+                    if isinstance(tp_result, dict) and tp_result.get("status") == "止盈已设置":
+                        result["_auto_tp"] = f"自动止盈已设置于 ${tp_target:.4f}"
+                        print(f"  [Agent] 自动止盈: [OK] {coin} TP${tp_target:.4f}")
+                    else:
+                        print(f"  [Agent] 自动止盈: [FAIL] {coin} → {str(tp_result)[:100]}")
+                else:
+                    print(f"  [Agent] 自动止盈: [SKIP] {coin} 无法获取入场价")
+            except Exception as e:
+                print(f"  [Agent] 自动止盈: [ERR] {coin} → {e}")
         return result
     elif name == "close_trade":
         coin = str(args.get("coin") or "").strip().upper()
@@ -477,8 +511,8 @@ def run_trade_cycle():
         # 后续只用 top 30，裁剪 overview 减少 JSON 序列化数据量
         overview = overview[:30]
 
-    # 资金费率数据（用于套利分析）
-    _funding_rates = hl_connector.get_funding_rates(8)
+    # 资金费率数据（用于套利分析 + 开仓方向硬检查）
+    _funding_rates = hl_connector.get_funding_rates(50)
     funding_text = json.dumps(_funding_rates, ensure_ascii=False) if isinstance(_funding_rates, list) else "无"
 
     state_text = _format_state(wallet_mode, balance, positions, overview, _extra_assets)
@@ -586,7 +620,7 @@ def run_trade_cycle():
             args = tc.get("args") or {}
             print(f"  [Agent] 调工具: {name}({args})")
             try:
-                result = _run_tool(name, args, _balance=balance, _positions=positions)
+                result = _run_tool(name, args, _balance=balance, _positions=positions, _funding_rates=_funding_rates)
             except Exception as e:
                 result = {"error": f"工具 {name} 执行异常: {e}"}
             # 交易或转账成功后刷新 balance/positions，避免后续仓位检查用旧数据
@@ -596,6 +630,9 @@ def run_trade_cycle():
                     need_refresh = True
                 elif name == "transfer_spot_to_perp" and result.get("status") == "ok":
                     need_refresh = True
+            elif name == "open_trade" and isinstance(result, str):
+                # open_trade 失败（如部分成交拒绝）也可能在交易所修改了仓位，刷新缓存保一致
+                need_refresh = True
             if need_refresh:
                 hl_connector.reset_user_state_cache()
                 new_balance = hl_connector.get_balance()

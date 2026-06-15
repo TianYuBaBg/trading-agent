@@ -76,6 +76,8 @@ _exchange = None
 _wallet_address = None
 _sz_decimals_cache = {}
 _sz_decimals_loaded = False
+_px_decimals_cache = {}
+_DEFAULT_PX_DECIMALS = 4
 _user_state_cache = None
 _mids_cache = None
 
@@ -275,6 +277,29 @@ def get_funding_rates(top_n: int = 20):
         return f"获取资金费率失败：{e}"
 
 
+def get_funding_rate_for_coin(coin: str) -> dict | None:
+    """查询单个币种的最新资金费率，返回 {funding_pct, direction} 或 None"""
+    info = _ensure_info()
+    try:
+        meta_ctxs = info.meta_and_asset_ctxs()
+        universe = meta_ctxs[0].get("universe") or []
+        ctxs = meta_ctxs[1] if len(meta_ctxs) > 1 else []
+        for i, asset in enumerate(universe):
+            if asset.get("name") == coin and i < len(ctxs):
+                funding = ctxs[i].get("funding")
+                if funding is None:
+                    return None
+                funding = float(funding)
+                return {
+                    "coin": coin,
+                    "funding_pct": round(funding * 100, 6),
+                    "direction": "short" if funding > 0 else "long",
+                }
+    except Exception:
+        pass
+    return None
+
+
 def get_funding_history(coin: str, hours: int = 48):
     """
     获取资金费率历史趋势，判断费率是否稳定（持续高/低）还是短暂脉冲
@@ -438,7 +463,7 @@ def get_balance():
         state = _get_user_state(addr)
         cross = state.get("crossMarginSummary") or {}
         isolated = state.get("isolatedMarginSummary") or {}
-        perp_value = float(cross.get("accountValue") or 0) + float(isolated.get("accountValue") or 0)
+        perp_equity = float(cross.get("accountValue") or 0) + float(isolated.get("accountValue") or 0)
         margin_used = float(cross.get("totalMarginUsed") or 0) + float(isolated.get("totalMarginUsed") or 0)
 
         # 查询 Spot 余额（API 钱包模式也可查询，仅转账受限）
@@ -452,12 +477,23 @@ def get_balance():
         except Exception:
             pass
 
-        total = perp_value + spot_value
+        # API 钱包模式下 crossMarginSummary 可能为 0，从持仓反推
+        if margin_used == 0 and perp_equity == 0:
+            positions = get_positions()
+            if isinstance(positions, list) and positions:
+                mids = _get_mids()
+                for p in positions:
+                    px = float(mids.get(p["coin"]) or p.get("entry_px") or 0)
+                    lev = float(p.get("leverage") or 1)
+                    margin_used += abs(p["size"] * px) / lev
+
+        # API 钱包：总资产 = spot（perp 本金已包含在 spot 中）
+        total = spot_value
         return {
             "wallet_value": round(total, 2),
             "margin_used": round(margin_used, 2),
             "available": round(total - margin_used, 2),
-            "perp_value": round(perp_value, 2),
+            "perp_value": round(perp_equity, 2),
             "spot_value": round(spot_value, 2),
         }
     except Exception as e:
@@ -603,7 +639,23 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
             if '"error"' in lev_str.lower() or '"status": "err"' in lev_str.lower():
                 return f"开仓失败：设置杠杆失败（{lev_str[:200]}）"
 
+        # 成交量检查：低于 $500K 日交易量的币种直接拒绝（流动性风险）
+        info = _ensure_info()
+        try:
+            meta_ctxs = info.meta_and_asset_ctxs()
+            universe = meta_ctxs[0].get("universe") or []
+            ctxs = meta_ctxs[1] if len(meta_ctxs) > 1 else []
+            for i, asset in enumerate(universe):
+                if asset.get("name") == coin and i < len(ctxs):
+                    day_vol = float(ctxs[i].get("dayNtlVlm") or 0)
+                    if 0 < day_vol < 500_000:
+                        return f"开仓失败：{coin} 日交易量 ${day_vol:.0f} 低于 $500K，流动性不足"
+                    break
+        except Exception:
+            pass  # 成交量检查失败不阻塞开仓
+
         # 市价单（IOC = Immediate-or-Cancel，市价吃单）
+        requested_coin_size = coin_size  # 保存原始请求数量，用于部分成交对比
         result = ex.market_open(coin, is_buy, coin_size, current_price, slippage=0.01)
         if not result:
             return "开仓失败：订单返回空结果"
@@ -624,11 +676,29 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
                 filled_sz = float(partial.get("totalSz") or 0)
                 if filled_sz > 0:
                     coin_size = filled_sz
+                    # 严重部分成交检测：成交 < 50% 请求量 → 拒绝
+                    fill_pct = filled_sz / requested_coin_size * 100
+                    if fill_pct < 50:
+                        print(f"  [开仓] 严重部分成交：请求 {requested_coin_size:.4f}{coin} 仅成交 {filled_sz:.4f}（{fill_pct:.1f}%），流动性不足")
+                        return f"开仓严重部分成交：请求 {requested_coin_size:.4f} 但仅成交 {filled_sz:.4f}（{fill_pct:.1f}%），{coin} 流动性不足，请换币或降低仓位"
             else:
                 return f"开仓未成交：订单未立即成交（挂单中）"
         else:
             # 提取实际成交均价（avgPx），比 all_mids 更精确
             current_price = _get_fill_price(statuses, current_price)
+            # 非 resting 也可能部分成交（IOC 吃单但流动性不足），提取实际成交量
+            fill = statuses[0].get("filled") if isinstance(statuses[0], dict) else None
+            if fill and fill.get("totalSz") is not None:
+                try:
+                    filled_sz = float(fill["totalSz"])
+                    if filled_sz > 0 and abs(filled_sz - requested_coin_size) / requested_coin_size > 0.05:
+                        coin_size = filled_sz
+                        fill_pct = filled_sz / requested_coin_size * 100
+                        print(f"  [开仓] 部分成交：请求 {requested_coin_size:.4f}{coin} 成交 {filled_sz:.4f}（{fill_pct:.1f}%）")
+                        if fill_pct < 50:
+                            return f"开仓严重部分成交：请求 {requested_coin_size:.4f} 但仅成交 {filled_sz:.4f}（{fill_pct:.1f}%），{coin} 流动性不足，请换币或降低仓位"
+                except (TypeError, ValueError):
+                    pass
 
         trade_record = {
             "coin": coin,
@@ -739,6 +809,17 @@ def close_trade(coin: str, size=None, _positions=None):
                 _update_trade_close(coin, current_price, pnl, side)
             except Exception as e:
                 print(f"  [平仓] 更新交易记录失败（不影响订单）: {e}")
+            # 全平后清理该币种所有挂单（避免旧 TP/SL 下次开仓时意外触发）
+            try:
+                orders = get_open_orders(coin)
+                if isinstance(orders, list):
+                    for o in orders:
+                        try:
+                            ex.cancel(coin, o["oid"])
+                        except Exception:
+                            pass
+            except Exception:
+                pass
 
         # 返回剩余数量，方便调用方判断是否为全平（remaining=0 表示已全部平完）
         return {
@@ -754,6 +835,36 @@ def close_trade(coin: str, size=None, _positions=None):
 
 
 # ========== 止损/止盈触发订单 ==========
+
+def _get_px_decimals(exchange, coin: str) -> int:
+    """获取币种的价格精度（小数点后位数），从订单簿推断 tick size"""
+    global _px_decimals_cache
+    if coin in _px_decimals_cache:
+        return _px_decimals_cache[coin]
+    try:
+        book = exchange.info.l2_snapshot(coin)
+        levels = book.get("levels", [[]])
+        max_dec = 0
+        if levels and levels[0]:
+            for l in levels[0][:10]:
+                raw = l["px"]
+                if "." in raw:
+                    dec = len(raw.split(".")[1])
+                    if dec > max_dec:
+                        max_dec = dec
+        result = max_dec if max_dec > 0 else _DEFAULT_PX_DECIMALS
+        _px_decimals_cache[coin] = result
+        return result
+    except Exception:
+        _px_decimals_cache[coin] = _DEFAULT_PX_DECIMALS
+        return _DEFAULT_PX_DECIMALS
+
+
+def _round_price(exchange, coin: str, price: float) -> float:
+    """将价格舍入到交易所接受的精度"""
+    px_decimals = _get_px_decimals(exchange, coin)
+    return round(price, px_decimals)
+
 
 def set_stop_loss(coin: str, stop_price: float, size: float = None, slippage: float = 0.03):
     """
@@ -778,10 +889,12 @@ def set_stop_loss(coin: str, stop_price: float, size: float = None, slippage: fl
             return "设置止损失败：数量无效"
         is_long = pos["direction"] == "long"
         is_buy = not is_long  # 多头→卖，空头→买
+        # 舍入触发价到合法精度，避免交易所拒绝
+        stop_price = _round_price(ex, coin, stop_price)
         mids = _get_mids()
         current_price = float(mids.get(coin) or 0) or float(pos.get("entry_px") or 0)
         # 市价触发：limit_px 为可接受的最差成交价（宽滑点确保成交）
-        limit_px = stop_price * (1 - slippage) if is_long else stop_price * (1 + slippage)
+        limit_px = _round_price(ex, coin, stop_price * (1 - slippage) if is_long else stop_price * (1 + slippage))
         order_type = {"trigger": {"triggerPx": stop_price, "isMarket": True, "tpsl": "sl"}}
         result = ex.order(coin, is_buy, close_sz, limit_px, order_type, reduce_only=True)
         if not result:
@@ -823,7 +936,8 @@ def set_take_profit(coin: str, target_price: float, size: float = None, slippage
             return "设置止盈失败：数量无效"
         is_long = pos["direction"] == "long"
         is_buy = not is_long
-        limit_px = target_price * (1 + slippage) if is_long else target_price * (1 - slippage)
+        target_price = _round_price(ex, coin, target_price)
+        limit_px = _round_price(ex, coin, target_price * (1 + slippage) if is_long else target_price * (1 - slippage))
         order_type = {"trigger": {"triggerPx": target_price, "isMarket": True, "tpsl": "tp"}}
         result = ex.order(coin, is_buy, close_sz, limit_px, order_type, reduce_only=True)
         if not result:

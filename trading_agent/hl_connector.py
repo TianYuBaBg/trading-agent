@@ -575,7 +575,7 @@ def open_trade(coin: str, side: str, size: float, leverage: int = 1, _balance=No
         coin_size = round(size / current_price, sz_decimals)
 
         # 确保最小名义价值 >= $10（Hyperliquid 要求）
-        min_sz = math.ceil(10.0 / current_price * (10 ** sz_decimals)) / (10 ** sz_decimals)
+        min_sz = math.ceil(config.MIN_ORDER_USD / current_price * (10 ** sz_decimals)) / (10 ** sz_decimals)
         if coin_size < min_sz:
             coin_size = min_sz
 
@@ -866,6 +866,24 @@ def _round_price(exchange, coin: str, price: float) -> float:
     return round(price, px_decimals)
 
 
+def _cancel_existing_trigger_orders(coin: str, tpsl_type: str):
+    """取消该币种所有指定类型的触发单（sl/tp），避免重复订单累积"""
+    try:
+        orders = get_open_orders(coin)
+        if not isinstance(orders, list):
+            return
+        ex = _ensure_exchange()
+        for o in orders:
+            if o.get("tpsl") == tpsl_type:
+                try:
+                    ex.cancel(coin, o["oid"])
+                    print(f"  [清理] 取消旧{tpsl_type}单 {coin} oid={o['oid']}")
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+
 def set_stop_loss(coin: str, stop_price: float, size: float = None, slippage: float = 0.03):
     """
     设置止损触发订单（价格触发后自动市价平仓）
@@ -893,6 +911,8 @@ def set_stop_loss(coin: str, stop_price: float, size: float = None, slippage: fl
         stop_price = _round_price(ex, coin, stop_price)
         mids = _get_mids()
         current_price = float(mids.get(coin) or 0) or float(pos.get("entry_px") or 0)
+        # 清理同币种旧止损单，避免重复累积
+        _cancel_existing_trigger_orders(coin, "sl")
         # 市价触发：limit_px 为可接受的最差成交价（宽滑点确保成交）
         limit_px = _round_price(ex, coin, stop_price * (1 - slippage) if is_long else stop_price * (1 + slippage))
         order_type = {"trigger": {"triggerPx": stop_price, "isMarket": True, "tpsl": "sl"}}
@@ -936,6 +956,8 @@ def set_take_profit(coin: str, target_price: float, size: float = None, slippage
             return "设置止盈失败：数量无效"
         is_long = pos["direction"] == "long"
         is_buy = not is_long
+        # 清理同币种旧止盈单，避免重复累积
+        _cancel_existing_trigger_orders(coin, "tp")
         target_price = _round_price(ex, coin, target_price)
         limit_px = _round_price(ex, coin, target_price * (1 + slippage) if is_long else target_price * (1 - slippage))
         order_type = {"trigger": {"triggerPx": target_price, "isMarket": True, "tpsl": "tp"}}
@@ -1135,13 +1157,24 @@ def get_trade_history(days: int = 7, since_ms: int = None):
                 continue
             raw_side = f.get("side")
             side_str = "buy" if raw_side == "B" else "sell" if raw_side == "S" else "unknown"
+            # 从 dir 字段提取仓位方向（Open Long/Short / Close Long/Short）
+            raw_dir = f.get("dir") or ""
+            position_side = ""
+            if "long" in raw_dir.lower():
+                position_side = "long"
+            elif "short" in raw_dir.lower():
+                position_side = "short"
+            # side 未知时用 dir 推断
+            if side_str == "unknown" and position_side:
+                side_str = "buy" if position_side == "long" else "sell"
             recent.append({
                 "coin": f.get("coin") or "",
                 "side": side_str,
+                "position_side": position_side,
                 "price": price,
                 "size": size,
                 "pnl": float(f["closedPnl"]) if f.get("closedPnl") is not None else None,
-                "dir": f.get("dir") or "",
+                "dir": raw_dir,
                 "time": time.strftime("%m-%d %H:%M", time.gmtime(fill_time / 1000)),
             })
         return recent

@@ -11,6 +11,7 @@
 """
 
 import json
+import os
 import datetime
 from openai import OpenAI, AuthenticationError
 from trading_agent import config
@@ -40,7 +41,7 @@ _TOOL_DESCRIPTIONS = {
     "get_candles": "查看某个币的K线趋势，参数：coin（币种），interval（间隔：1m/5m/15m/1h/4h/1d，默认1h），hours（往回看几小时，默认24）",
     "get_positions": "查看当前持仓及盈亏",
     "get_balance": "查看账户总资产和可用余额",
-    "open_trade": "开仓交易，参数：coin（币种），side（long/short），size（USD金额≥10），leverage（杠杆倍数，默认1）",
+    "open_trade": f"开仓交易，参数：coin（币种），side（long/short），size（USD金额≥{config.MIN_ORDER_USD}），leverage（杠杆倍数，默认1）",
     "close_trade": "平仓，参数：coin（币种），size（平仓数量，可选，不传则全平）",
     "recall_lessons": "回想过去类似情况学到的教训，参数：context（当前市场情况描述），top_k（返回几条，默认3）",
     "add_lesson": "记录一条新教训，参数：lesson（教训内容），tags（标签列表），outcome（结果）",
@@ -74,7 +75,8 @@ def _build_system_prompt():
 		**硬约束：禁止逆费率方向开仓。** 费率为负时必须做多（不可做空），费率为正时必须做空（不可做多）。趋势分析和K线形态仅用于选择入场时机，不能用于推翻费率方向。如果当前持仓方向与费率方向相反，必须立即平仓纠正。
 	12. **让利润奔跑，不设微利止盈**：费率套利的利润主要来自资金费率持续流入，不要赚 0.3% 就跑。用 set_take_profit 在合理目标价位挂止盈单（如支撑/阻力位、前高/前低），让仓位有空间走出趋势。平仓理由应该是费率回归正常、趋势反转或找到更好机会，而不是为了锁定微利
 	13. **分散风险**：当可用资金 > $100 时，开至少 2 个不同币种，单币名义价值不超过总资金的 300%。不要把所有资金压在一个币上，至少找 2 个有高费率机会的币同时持仓。如果当前只有一个币有仓位但市场还有别的机会，加仓新币而不是继续堆旧币
-	14. **远离被投票下架的币**：TON 正在进行下架投票（Validator vote to delist TON），不要开 TON 新仓位，已有 TON 仓位应立即平仓
+	14. 每天最多开仓 3 次，达到上限后只能管理现有持仓（平仓/调SL/TP），不能开新仓
+	15. **远离被投票下架的币**：TON 正在进行下架投票（Validator vote to delist TON），不要开 TON 新仓位，已有 TON 仓位应立即平仓
 
 ## 可用工具
 {json.dumps(_TOOL_DESCRIPTIONS, ensure_ascii=False, indent=2)}
@@ -92,11 +94,40 @@ def _build_system_prompt():
 }}
 
 流程说明：
-1. 第一轮：分析当前状态，如果数据不够就调工具获取更多信息
-2. 工具结果会返回给你，根据新数据做最终决策
-3. tool_calls 为空数组 = 最终决策完成（不交易或已执行）
-4. 如果发现交易机会，果断用 open_trade 开仓；如果持仓方向错了，close_trade 平仓
-	5. **开仓后务必立即用 set_stop_loss 设置止损**，利润达标时用 set_take_profit 止盈"""
+16. 第一轮：分析当前状态，如果数据不够就调工具获取更多信息
+17. 工具结果会返回给你，根据新数据做最终决策
+18. tool_calls 为空数组 = 最终决策完成（不交易或已执行）
+19. 如果发现交易机会，果断用 open_trade 开仓；如果持仓方向错了，close_trade 平仓
+	20. **开仓后务必立即用 set_stop_loss 设置止损**，利润达标时用 set_take_profit 止盈"""
+
+
+# ========== 每日开仓计数 ==========
+_DAILY_TRADE_FILE = os.path.join(config.DATA_DIR, "daily_trade_count.json")
+
+
+def _get_daily_open_count() -> int:
+    """读取当日已开仓次数，跨日自动重置"""
+    today = datetime.date.today().isoformat()
+    try:
+        if os.path.exists(_DAILY_TRADE_FILE):
+            with open(_DAILY_TRADE_FILE, encoding="utf-8") as f:
+                data = json.load(f)
+            if isinstance(data, dict) and data.get("date") == today:
+                return int(data.get("count", 0))
+    except Exception:
+        pass
+    return 0
+
+
+def _increment_daily_open_count():
+    """当日开仓计数 +1"""
+    today = datetime.date.today().isoformat()
+    count = _get_daily_open_count() + 1
+    try:
+        with open(_DAILY_TRADE_FILE, "w", encoding="utf-8") as f:
+            json.dump({"date": today, "count": count}, f, ensure_ascii=False)
+    except OSError:
+        pass  # 不影响交易流程
 
 
 # ========== 防重复执行 ==========
@@ -456,12 +487,20 @@ def run_trade_cycle():
         return {"error": msg, "reply": msg, "state": json.dumps(balance, ensure_ascii=False),
                 "tool_results": [], "thought": msg, "need_review": False, "lesson_to_save": ""}
     # 低于最小开仓所需金额时提前跳过，避免浪费 RPC 和 AI 调用
-    min_value = 10.0 / (config.MAX_POSITION_SIZE_PCT / 100)
+    min_value = config.MIN_ORDER_USD / (config.MAX_POSITION_SIZE_PCT / 100)
     if wallet_value < min_value:
-        msg = f"余额 ${wallet_value:.2f} 低于开仓所需最低 ${min_value:.2f}（$10 / {config.MAX_POSITION_SIZE_PCT}%），跳过交易周期"
+        msg = f"余额 ${wallet_value:.2f} 低于开仓所需最低 ${min_value:.2f}（${config.MIN_ORDER_USD} / {config.MAX_POSITION_SIZE_PCT}%），跳过交易周期"
         print(f"  [Agent] {msg}")
         return {"error": msg, "reply": msg, "state": json.dumps(balance, ensure_ascii=False),
                 "tool_results": [], "thought": msg, "need_review": False, "lesson_to_save": ""}
+
+    # 每日开仓上限检查
+    _daily_open = _get_daily_open_count()
+    if _daily_open >= config.MAX_DAILY_OPEN_TRADES:
+        msg = f"今日已开仓 {_daily_open} 次，达到上限 {config.MAX_DAILY_OPEN_TRADES} 次，跳过开仓（可继续管理现有持仓）"
+        print(f"  [Agent] {msg}")
+        # 注意：这不是错误，只是跳过开仓，仍然可以管理持仓/设置SL/TP
+        # 这里继续执行，但用标记阻止 AI 开新仓
 
     positions = hl_connector.get_positions()
     if isinstance(positions, str):
@@ -517,6 +556,7 @@ def run_trade_cycle():
 
     state_text = _format_state(wallet_mode, balance, positions, overview, _extra_assets)
     state_text += f"\n资金费率排行(套利机会)：{funding_text}"
+    state_text += f"\n今日已开仓 {_daily_open}/{config.MAX_DAILY_OPEN_TRADES} 次"
 
     # ---- 构造自然语言召回上下文（向量搜索用，不用 JSON）----
     recall_context_parts = []
@@ -628,6 +668,8 @@ def run_trade_cycle():
             if isinstance(result, dict):
                 if result.get("status") in ("已开仓", "已平仓", "部分平仓"):
                     need_refresh = True
+                    if name == "open_trade" and result.get("status") == "已开仓":
+                        _increment_daily_open_count()
                 elif name == "transfer_spot_to_perp" and result.get("status") == "ok":
                     need_refresh = True
             elif name == "open_trade" and isinstance(result, str):

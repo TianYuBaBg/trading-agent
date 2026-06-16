@@ -1,0 +1,21 @@
+# systemd 服务配置
+# 安装：sudo cp deploy /etc/systemd/system/claudos.service && sudo systemctl enable claudos
+# 使用：sudo systemctl {start|stop|status|restart} claudos
+# 日志：sudo journalctl -u claudos -f
+
+[Unit]
+Description=Claudos Trading Bot
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/path/to/Claudos
+ExecStart=python /path/to/Claudos/run_server.py
+Restart=always
+RestartSec=30
+StandardOutput=append:/path/to/Claudos/data/server.log
+StandardError=append:/path/to/Claudos/data/server.log
+
+[Install]
+WantedBy=multi-user.target

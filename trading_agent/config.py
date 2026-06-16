@@ -50,6 +50,12 @@ MAX_LEVERAGE = 3  # 最高 3 倍
 # 每日最大亏损：超过这个比例就停止自动交易
 DAILY_LOSS_LIMIT_PCT = -5  # -5%，日亏 5% 就停
 
+# 最小开仓金额（USD），提高此值可减少部分成交问题
+MIN_ORDER_USD = 30  # $30
+
+# 每日最大开仓次数
+MAX_DAILY_OPEN_TRADES = 3  # 每天最多 3 次
+
 # 只允许交易的币种（在下方列表中添加，自动转大写；空 = 不限）
 # 例如：_ALLOWED_COINS = ["BTC", "ETH"]
 _ALLOWED_COINS = []
